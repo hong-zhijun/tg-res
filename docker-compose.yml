@@ -1,0 +1,18 @@
+services:
+  tgbot:
+    build: .
+    container_name: tgbot-saver
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${WEB_PORT}:${WEB_PORT}"
+    volumes:
+      - ${SAVE_PATH}:/app/saved
+      - ${DATA_PATH}:/app/data
+      - ${DATA_PATH}/tgapi:/var/lib/telegram-bot-api
+    environment:
+      - TZ=${TIMEZONE}
+      - SAVE_PATH=/app/saved
+      - DATA_PATH=/app/data
+      - SSH_KEY_PATH=/app/data/ssh
+      - TGAPI_DIR=/var/lib/telegram-bot-api

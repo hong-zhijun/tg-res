@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>登录</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+    <form method="post" action="/login" class="login-form">
+        <h1>管理页登录</h1>
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        <input type="password" name="password" placeholder="管理页密码" autofocus>
+        <button type="submit">登录</button>
+    </form>
+</body>
+</html>
