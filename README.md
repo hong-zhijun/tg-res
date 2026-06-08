@@ -2,7 +2,7 @@
 
 私人 Telegram NAS 剪藏机器人。把文字、图片、视频、文件、语音等内容发给自己的 Telegram bot，服务会把内容保存到家里的 NAS，并提供一个内网 Web 后台用于浏览、搜索和管理。
 
-> 当前仓库处于工程骨架阶段：项目结构、配置、Docker 编排、Web 占位页和 Bot 入口已经初始化，业务逻辑会在后续迭代中补齐。
+> 当前仓库已经完成第一版可运行实现：Bot 收存链路、后台 API、Web 管理页面、Docker 编排和文档均已接通。
 
 ## 目标
 
@@ -51,7 +51,7 @@ NAS Docker 容器
 
 ```text
 app/
-  bot/              Telegram bot 入口、命令、通知、占位 handler
+  bot/              Telegram bot 入口、命令、通知、消息 handler
   web/              FastAPI 后台、路由、模板、静态资源
   utils/            日志、存储、时间工具
   config.py         环境变量配置
@@ -61,6 +61,9 @@ app/
 docs/
   REQUIREMENTS.md   需求文档
   DEVELOPMENT.md    开发文档
+  API.md            后台接口文档
+  PHASE1_PLAN.md    第一期开发计划
+  UI-design/        Web UI 设计稿
 scripts/
   init_db.py        手动初始化数据库
   manual_test.md    手动测试清单入口
@@ -111,6 +114,8 @@ SSH 私钥放在：
 
 ## 启动
 
+### Docker / NAS
+
 ```bash
 docker compose up -d --build
 docker compose logs -f
@@ -122,6 +127,34 @@ Web 后台默认访问：
 http://nas-ip:8080
 ```
 
+### 本地开发（uv）
+
+本地只跑 Web 后台时，可以用测试环境变量启动：
+
+```powershell
+$env:BOT_TOKEN='123:ABC'
+$env:BOT_OWNER_ID='1'
+$env:TG_API_ID='1'
+$env:TG_API_HASH='hash'
+$env:SSH_USER='user'
+$env:SSH_HOST='host'
+$env:ADMIN_PASSWORD='pass'
+$env:SAVE_PATH="$PWD\.tmp_saved"
+$env:DATA_PATH="$PWD\.tmp_data"
+$env:WEB_PORT='8080'
+uv run --with-requirements requirements.txt uvicorn app.web.main:build_app --factory --host 127.0.0.1 --port 8080
+```
+
+访问：
+
+```text
+http://127.0.0.1:8080
+```
+
+登录密码就是上面设置的 `ADMIN_PASSWORD`。
+
+完整 Bot + Web 运行仍建议走 Docker，因为它依赖 `telegram-bot-api server` 和 SSH SOCKS 隧道。
+
 ## 开发状态
 
 已完成：
@@ -129,19 +162,17 @@ http://nas-ip:8080
 - 基础 Python 包结构
 - 配置模型
 - SQLite 表结构
-- bot 入口和命令占位
-- Web 登录、仪表盘和路由占位
+- Bot 白名单、命令、消息接收和媒体保存
+- Web 登录、仪表盘、消息、用户、日志、配置页面
+- 后台 JSON API
 - Dockerfile、docker-compose、entrypoint
 - 文档和手动测试入口
 
 待实现：
 
-- 白名单处理
-- 消息类型 handler
-- 媒体文件保存
-- 数据库查询和统计
-- Web 消息列表、详情、删除
-- 用户管理、日志页、配置页
+- NAS / Telegram 真实环境联调
+- 大文件 100MB / 500MB 手动验收
+- 后续 Phase 2 功能：URL 抓取、全文检索、标签 UI 等
 
 ## 文档
 

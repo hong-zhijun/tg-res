@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     web_port: int = 8080
     admin_password: str
+    session_secret: str = ""
 
     log_level: str = "INFO"
     timezone: str = "Asia/Shanghai"

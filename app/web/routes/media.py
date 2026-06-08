@@ -14,7 +14,7 @@ async def serve(path: str):
     settings = get_settings()
     base = Path(settings.save_path).resolve()
     target = (base / path).resolve()
-    if not str(target).startswith(str(base)):
+    if base not in target.parents and target != base:
         raise HTTPException(403)
     if not target.exists() or not target.is_file():
         raise HTTPException(404)

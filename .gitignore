@@ -2,9 +2,14 @@
 *.pyc
 __pycache__/
 .venv/
+.uv-cache/
+.uv-python/
+.tmp_data/
+.tmp_saved/
 data/
 saved/
 *.db
 *.db-wal
 *.db-shm
 logs/
+.codegraph/

@@ -1,9 +1,19 @@
 import logging
 
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from telegram.request import HTTPXRequest
 
 from app.bot.commands import cmd_help, cmd_id, cmd_search, cmd_start, cmd_stats
+from app.bot.handlers import (
+    handle_animation,
+    handle_audio,
+    handle_document,
+    handle_photo,
+    handle_sticker,
+    handle_text,
+    handle_video,
+    handle_voice,
+)
 from app.bot.notify import error_handler, register_commands
 from app.config import get_settings
 
@@ -32,6 +42,7 @@ def build_application() -> Application:
         .request(request)
         .get_updates_request(get_updates_request)
         .post_init(post_init)
+        .concurrent_updates(True)
         .build()
     )
 
@@ -40,5 +51,15 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("search", cmd_search))
     app.add_handler(CommandHandler("help", cmd_help))
+
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(MessageHandler(filters.AUDIO, handle_audio))
+    app.add_handler(MessageHandler(filters.ANIMATION, handle_animation))
+    app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
+    app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
     app.add_error_handler(error_handler)
     return app

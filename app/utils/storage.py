@@ -1,10 +1,28 @@
 import os
 import shutil
+from pathlib import Path
 
 
-def build_save_path(type_: str, msg_id: int, unique_id: str, ext: str) -> str:
+def safe_filename(name: str, fallback: str = "file") -> str:
+    cleaned = "".join(c if c.isalnum() or c in "._- " else "_" for c in name).strip(" .")
+    return cleaned[:120] or fallback
+
+
+def build_save_path(
+    type_: str,
+    msg_id: int,
+    unique_id: str,
+    ext: str,
+    original_name: str | None = None,
+) -> str:
     safe_unique = "".join(c for c in unique_id if c.isalnum() or c in "-_")[:32]
-    filename = f"{msg_id}_{safe_unique}{ext}"
+    if original_name:
+        original = safe_filename(Path(original_name).name)
+        filename = f"{msg_id}_{original}"
+        if not Path(filename).suffix and ext:
+            filename += ext
+    else:
+        filename = f"{msg_id}_{safe_unique}{ext}"
     return os.path.join(type_, filename)
 
 

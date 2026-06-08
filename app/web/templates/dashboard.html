@@ -1,6 +1,206 @@
 {% extends "base.html" %}
-{% block title %}仪表盘{% endblock %}
-{% block content %}
-<h1>仪表盘</h1>
-<p>后台骨架已初始化，业务数据稍后接入。</p>
+{% block title %}Archive Admin{% endblock %}
+{% block body %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-mark">A</div>
+            <div>
+                <h1>Archive</h1>
+                <p>Admin Console</p>
+            </div>
+        </div>
+
+        <nav class="nav" id="nav">
+            <a href="#dashboard" data-route="dashboard">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="1.7"/></svg>
+                仪表盘
+            </a>
+            <a href="#messages" data-route="messages">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14v10H8l-3 3V6Z" stroke="currentColor" stroke-width="1.7"/></svg>
+                消息列表
+            </a>
+            <a href="#users" data-route="users">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 1v7m-3.5-3.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                用户白名单
+            </a>
+            <a href="#logs" data-route="logs">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16H6V4Zm3 5h6m-6 4h6m-6 4h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                日志查看
+            </a>
+            <a href="#settings" data-route="settings">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm0-12v2m0 13v2m8.5-8.5h-2m-13 0h-2m14.3-6.3-1.4 1.4m-8.8 8.8-1.4 1.4m0-11.6 1.4 1.4m8.8 8.8 1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                设置页
+            </a>
+        </nav>
+
+        <div class="sidebar-foot">
+            <strong>服务状态</strong>
+            <div class="health"><i class="dot"></i><span>Bot / API / Web 正常</span></div>
+        </div>
+    </aside>
+    <div class="mobile-scrim" id="scrim"></div>
+
+    <main class="main">
+        <header class="topbar">
+            <div class="page-title">
+                <button class="icon-btn mobile-menu" id="menuBtn" aria-label="打开菜单">☰</button>
+                <h2 id="pageTitle">仪表盘</h2>
+                <span class="crumb" id="pageCrumb">今日概览</span>
+            </div>
+            <div class="top-actions">
+                <label class="search">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    <input id="globalSearch" placeholder="搜索消息、用户、日志">
+                </label>
+                <button class="btn ghost" id="logoutBtn">退出</button>
+                <button class="btn primary" id="refreshBtn">刷新</button>
+            </div>
+        </header>
+
+        <section class="content">
+            <div id="dashboard" class="view">
+                <div class="grid" style="gap:22px">
+                    <section class="card hero-card">
+                        <div>
+                            <h3>剪藏后台运行中。</h3>
+                            <p id="heroSummary">正在读取 Telegram 剪藏统计、媒体保存状态和最近消息。</p>
+                            <div class="filters">
+                                <a class="btn primary" href="#messages">查看消息</a>
+                                <button class="btn" data-action="refresh">手动刷新</button>
+                            </div>
+                        </div>
+                        <div class="ink-illustration" aria-hidden="true">
+                            <svg viewBox="0 0 420 260" fill="none">
+                                <path d="M64 181c34-69 74-102 120-99 69 5 64 107 132 71 28-14 39-42 42-72" stroke="#141413" stroke-width="5" stroke-linecap="round"/>
+                                <path d="M84 62c44 14 74 12 107-8" stroke="#c96442" stroke-width="7" stroke-linecap="round"/>
+                                <path d="M76 196c48 21 100 27 156 18 46-7 83-25 111-52" stroke="#c96442" stroke-width="5" stroke-linecap="round"/>
+                                <circle cx="305" cy="88" r="30" fill="#e8e6dc" stroke="#141413" stroke-width="4"/>
+                                <path d="M294 91h24M306 79v24" stroke="#141413" stroke-width="4" stroke-linecap="round"/>
+                                <path d="M119 121h76M119 142h45" stroke="#5e5d59" stroke-width="4" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                    </section>
+
+                    <section class="grid cols-4">
+                        <article class="card metric"><span class="label">今日消息</span><span class="value" id="metricToday">0</span><span class="delta good">今日新增</span></article>
+                        <article class="card metric"><span class="label">本周消息</span><span class="value" id="metricWeek">0</span><span class="delta">滚动统计</span></article>
+                        <article class="card metric"><span class="label">本月消息</span><span class="value" id="metricMonth">0</span><span class="delta">本月归档</span></article>
+                        <article class="card metric"><span class="label">存储占用</span><span class="value text-scale" id="metricStorage">0 B</span><span class="delta warn">媒体目录</span></article>
+                    </section>
+
+                    <section class="grid cols-2">
+                        <article class="card">
+                            <h3>最近消息</h3>
+                            <div class="activity" id="recentMessages"></div>
+                        </article>
+                        <article class="card dark">
+                            <h3>类型分布</h3>
+                            <div class="activity" id="typeDistribution"></div>
+                        </article>
+                    </section>
+                </div>
+            </div>
+
+            <div id="messages" class="view">
+                <div class="toolbar">
+                    <div class="filters">
+                        <input id="messageSearch" class="control" placeholder="搜索正文或 caption">
+                        <select id="typeFilter" class="control">
+                            <option value="">全部类型</option>
+                            <option value="text">文本</option>
+                            <option value="photo">图片</option>
+                            <option value="video">视频</option>
+                            <option value="document">文档</option>
+                            <option value="voice">语音</option>
+                            <option value="audio">音频</option>
+                            <option value="animation">动画</option>
+                            <option value="sticker">贴纸</option>
+                        </select>
+                        <input id="dateFrom" class="control" type="date">
+                        <input id="dateTo" class="control" type="date">
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="btn" id="prevPageBtn">上一页</button>
+                        <button class="btn" id="nextPageBtn">下一页</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>消息</th><th>类型</th><th>用户</th><th>时间</th><th>大小</th><th style="text-align:right">操作</th></tr></thead>
+                        <tbody id="messageRows"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="users" class="view">
+                <div class="toolbar">
+                    <div class="filters">
+                        <input class="control" id="userSearch" placeholder="搜索用户名、昵称或备注">
+                        <select class="control" id="allowedFilter">
+                            <option value="">全部权限</option>
+                            <option value="true">已允许</option>
+                            <option value="false">未允许</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>用户</th><th>权限</th><th>消息数</th><th>最后活跃</th><th>备注</th><th style="text-align:right">操作</th></tr></thead>
+                        <tbody id="userRows"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="logs" class="view">
+                <div class="toolbar">
+                    <div class="filters">
+                        <select class="control" id="logLevelFilter">
+                            <option value="">全部 level</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                        <input class="control" id="logSearch" placeholder="搜索日志内容">
+                    </div>
+                    <button class="btn" id="refreshLogsBtn">刷新日志</button>
+                </div>
+                <div class="card log-card">
+                    <div id="logRows"></div>
+                </div>
+            </div>
+
+            <div id="settings" class="view">
+                <div class="grid cols-2">
+                    <section class="card">
+                        <h3>当前配置</h3>
+                        <div class="settings-list" id="settingsList"></div>
+                    </section>
+                    <section class="card">
+                        <h3>运行说明</h3>
+                        <div class="settings-list">
+                            <div class="setting-row"><div><strong>自动下载媒体</strong><span>Bot 接收媒体后保存到 NAS 挂载目录</span></div><span class="pill success">启用</span></div>
+                            <div class="setting-row"><div><strong>仅白名单可用</strong><span>未知用户首次拒绝，后续静默</span></div><span class="pill success">启用</span></div>
+                            <div class="setting-row"><div><strong>Web 暴露方式</strong><span>设计为家庭局域网访问</span></div><span class="pill">内网</span></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal" id="modalBox">
+        <div class="modal-head">
+            <h3 id="modalTitle">标题</h3>
+            <button class="icon-btn" id="modalClose" aria-label="关闭">×</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-foot" id="modalFoot"></div>
+    </div>
+</div>
+
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
+<script src="/static/admin.js"></script>
 {% endblock %}

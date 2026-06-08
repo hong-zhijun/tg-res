@@ -1,16 +1,30 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <title>登录</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="login-page">
-    <form method="post" action="/login" class="login-form">
-        <h1>管理页登录</h1>
-        {% if error %}<p class="error">{{ error }}</p>{% endif %}
-        <input type="password" name="password" placeholder="管理页密码" autofocus>
-        <button type="submit">登录</button>
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}登录 - Archive Admin{% endblock %}
+{% block body %}
+<div class="login-screen">
+    <section class="login-art">
+        <div class="brand login-brand">
+            <div class="brand-mark login-mark">A</div>
+            <div>
+                <h1>Archive Admin</h1>
+                <p>内部管理后台</p>
+            </div>
+        </div>
+        <div>
+            <h1>管理剪藏、用户与运行状态。</h1>
+            <p>统一处理消息归档、媒体资源、白名单与系统日志。弹层和 toast 使用同一套视觉规范。</p>
+        </div>
+    </section>
+    <section class="login-card-wrap">
+        <form method="post" action="/login" class="card login-card">
+            <h3>登录</h3>
+            {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+            <div class="field">
+                <label for="password">管理页密码</label>
+                <input id="password" type="password" name="password" placeholder="输入 .env 中的 ADMIN_PASSWORD" autocomplete="current-password" autofocus>
+            </div>
+            <button class="btn primary" type="submit">进入后台</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

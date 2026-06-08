@@ -1,5 +1,5 @@
-{% extends "base.html" %}
-{% block title %}日志{% endblock %}
-{% block content %}
-<h1>日志</h1>
+{% extends "dashboard.html" %}
+{% block body %}
+{{ super() }}
+<script>window.location.hash = window.location.hash || "logs";</script>
 {% endblock %}

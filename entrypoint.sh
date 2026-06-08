@@ -1,6 +1,18 @@
 #!/bin/bash
 set -e
 
+SSH_RUNTIME_DIR=/tmp/tgbot-ssh
+SSH_PRIVATE_KEY=${SSH_RUNTIME_DIR}/id_ed25519
+
+mkdir -p "${SSH_RUNTIME_DIR}"
+if [ ! -f "${SSH_KEY_PATH}/id_ed25519" ]; then
+    echo "[entrypoint] SSH private key not found: ${SSH_KEY_PATH}/id_ed25519"
+    exit 1
+fi
+cp "${SSH_KEY_PATH}/id_ed25519" "${SSH_PRIVATE_KEY}"
+chmod 600 "${SSH_PRIVATE_KEY}"
+touch "${SSH_KEY_PATH}/known_hosts"
+
 echo "[entrypoint] Starting SSH SOCKS tunnel..."
 autossh -M 0 -N -D 127.0.0.1:${SOCKS_PORT:-1080} \
   -o "ServerAliveInterval=30" \
@@ -8,7 +20,7 @@ autossh -M 0 -N -D 127.0.0.1:${SOCKS_PORT:-1080} \
   -o "ExitOnForwardFailure=yes" \
   -o "StrictHostKeyChecking=accept-new" \
   -o "UserKnownHostsFile=${SSH_KEY_PATH}/known_hosts" \
-  -i ${SSH_KEY_PATH}/id_ed25519 \
+  -i "${SSH_PRIVATE_KEY}" \
   -p ${SSH_PORT:-22} \
   ${SSH_USER}@${SSH_HOST} &
 TUNNEL_PID=$!
@@ -16,7 +28,7 @@ TUNNEL_PID=$!
 echo "[entrypoint] Waiting for tunnel..."
 TUNNEL_READY=0
 for i in {1..15}; do
-    if curl -sf --socks5 127.0.0.1:${SOCKS_PORT:-1080} \
+    if curl -sf --socks5-hostname 127.0.0.1:${SOCKS_PORT:-1080} \
         --max-time 5 https://api.telegram.org > /dev/null; then
         echo "[entrypoint] Tunnel is up."
         TUNNEL_READY=1
@@ -30,15 +42,26 @@ if [ "$TUNNEL_READY" != "1" ]; then
     exit 1
 fi
 
+echo "[entrypoint] Configuring proxychains for SOCKS5 tunnel..."
+cat > /tmp/proxychains.conf <<PCEOF
+strict_chain
+quiet_mode
+proxy_dns
+tcp_read_time_out 15000
+tcp_connect_time_out 8000
+[ProxyList]
+socks5 127.0.0.1 ${SOCKS_PORT:-1080}
+PCEOF
+
 echo "[entrypoint] Starting telegram-bot-api server..."
 mkdir -p ${TGAPI_DIR} ${DATA_PATH}/logs
-telegram-bot-api \
+proxychains4 -f /tmp/proxychains.conf \
+  telegram-bot-api \
   --local \
   --api-id="${TG_API_ID}" \
   --api-hash="${TG_API_HASH}" \
   --http-port=${TGAPI_PORT:-8081} \
   --dir="${TGAPI_DIR}" \
-  --proxy="socks5://127.0.0.1:${SOCKS_PORT:-1080}" \
   --log="${DATA_PATH}/logs/tgapi.log" \
   --verbosity=2 &
 TGAPI_PID=$!
