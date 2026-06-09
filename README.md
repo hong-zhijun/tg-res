@@ -2,16 +2,42 @@
 
 私人 Telegram NAS 剪藏机器人。把文字、图片、视频、文件、语音等内容发给自己的 Telegram bot，服务会把内容保存到家里的 NAS，并提供一个内网 Web 后台用于浏览、搜索和管理。
 
-> 当前仓库已经完成第一版可运行实现：Bot 收存链路、后台 API、Web 管理页面、Docker 编排和文档均已接通。
+## 功能
 
-## 目标
+### Bot 端
 
-- 私人使用，不做多租户和公开发布。
-- Telegram bot 负责接收内容并保存到 NAS。
-- 媒体文件按类型保存，例如 `photo/`、`video/`、`document/`。
-- Web 后台只在家庭局域网访问，登录只需要管理页密码。
-- 通过自建 `telegram-bot-api server` 本地模式支持大文件保存。
-- NAS 通过 SSH SOCKS 隧道使用美国服务器访问 Telegram。
+- **消息接收**：支持文字、图片、视频、文档、语音、音频、动画、贴纸
+- **大文件下载**：通过本地 telegram-bot-api server 支持超 20MB 文件，带进度条、速度和 ETA 显示
+- **下载稳定性**：自动重试（3次指数退避）、文件完整性校验、按文件大小动态超时
+- **并发控制**：信号量限制最多 3 个大文件同时下载，排队时显示位置
+- **媒体组合并**：同一 media_group 的多个文件打包处理，一条通知跟踪整组进度
+- **多级资源分组**：树形分组结构，转发消息后弹出 InlineKeyboard 选择分组
+- **分组图标**：每个分组可自定义图标（📁📂📦📋⭐❤️🔥💎）
+- **Bundle 关联**：media_group 和频道转发消息通过 bundle_id 关联存储
+- **白名单**：仅授权用户可使用，未知用户首次拒绝后静默
+
+### Bot 命令
+
+| 命令 | 说明 |
+|---|---|
+| `/start` | 开始使用 |
+| `/id` | 查看 user ID |
+| `/stats` | 统计信息（今日/本月/总数/存储占用） |
+| `/search <关键词>` | 搜索历史消息 |
+| `/queue` | 查看下载队列 |
+| `/groups` | 查看分组列表 |
+| `/newgroup <路径>` | 创建分组（支持多级，如 `旅行/日本/东京`） |
+| `/mv <ID> <路径>` | 移动消息到分组 |
+| `/help` | 查看命令列表 |
+
+### Web 后台
+
+- **仪表盘**：今日/本周/本月消息数、存储占用、最近消息、类型分布
+- **消息管理**：搜索、类型筛选、日期筛选、分页、详情查看（含媒体预览）、删除
+- **用户白名单**：搜索、权限切换、备注编辑
+- **分组管理**：树形展示、新建（含图标选择）、重命名、更换图标、删除（子分组自动上移）
+- **日志查看**：按级别筛选、关键词搜索
+- **登录**：管理页密码认证，session cookie
 
 ## 架构
 
@@ -27,47 +53,115 @@ Telegram API
     v
 NAS Docker 容器
     |-- autossh 隧道进程
-    |-- telegram-bot-api server
-    |-- Python Telegram bot
+    |-- telegram-bot-api server (本地模式，MTProto 经 proxychains 走隧道)
+    |-- Python Bot (python-telegram-bot 21.x)
     |-- FastAPI Web 后台
     |
     v
 /vol1/1000/tgbot/
-    |-- saved/  媒体文件
+    |-- saved/  媒体文件（按分组或类型目录存放）
     |-- data/   SQLite、日志、SSH 密钥、telegram-bot-api 状态
 ```
 
 ## 技术栈
 
 - Python 3.12
-- python-telegram-bot 21.x
-- FastAPI + Jinja2
-- SQLModel + SQLite
+- python-telegram-bot 21.x（HTTPXRequest, connection_pool_size=16）
+- FastAPI + Jinja2 + Starlette Session
+- SQLModel + SQLite（WAL 模式）
 - Docker + docker-compose
 - telegram-bot-api server 本地模式
 - autossh + SSH SOCKS 隧道
+- proxychains-ng（MTProto 代理）
+- httpx（独立 SOCKS 连接，进度消息编辑）
 
-## 当前目录
+## 目录结构
 
 ```text
 app/
-  bot/              Telegram bot 入口、命令、通知、消息 handler
-  web/              FastAPI 后台、路由、模板、静态资源
-  utils/            日志、存储、时间工具
-  config.py         环境变量配置
-  db.py             SQLite 初始化
-  models.py         SQLModel 表定义
-  run.py            bot + web 主入口
+  bot/
+    main.py           Bot Application 构建和 handler 注册
+    handlers.py       消息处理、下载进度、分组选择、媒体组合并
+    commands.py       /start /stats /search /groups /newgroup /mv 等
+    groups.py         分组 CRUD、InlineKeyboard 构建
+    saver.py          文件下载保存、完整性校验
+    notify.py         BotFather 命令注册、错误通知
+  web/
+    main.py           FastAPI 应用构建
+    auth.py           密码验证、session 鉴权
+    routes/
+      api.py          JSON API（仪表盘/消息/用户/分组/日志/配置）
+      dashboard.py    仪表盘页面路由
+      messages.py     消息列表/详情页面路由
+      users.py        用户管理页面路由
+      logs.py         日志页面路由
+      settings.py     配置页面路由
+      media.py        媒体文件静态服务
+      auth.py         登录页面路由
+    templates/        Jinja2 HTML 模板
+    static/
+      admin.js        SPA 路由、API 调用、弹窗、图标选择器
+      style.css       全量样式
+  utils/
+    storage.py        文件路径生成（支持分组路径）
+    logging_setup.py  日志配置
+    time.py           时间工具
+  config.py           环境变量配置（Pydantic Settings）
+  db.py               SQLite 初始化 + 自动迁移
+  models.py           数据模型（User / Group / Message / Tag / MessageTag）
+  run.py              Bot + Web 并发启动入口
 docs/
-  REQUIREMENTS.md   需求文档
-  DEVELOPMENT.md    开发文档
-  API.md            后台接口文档
-  PHASE1_PLAN.md    第一期开发计划
-  UI-design/        Web UI 设计稿
+  REQUIREMENTS.md     需求文档
+  DEVELOPMENT.md      开发文档
+  API.md              后台接口文档
+  UI-design/          Web UI 设计稿
 scripts/
-  init_db.py        手动初始化数据库
-  manual_test.md    手动测试清单入口
+  init_db.py          手动初始化数据库
 ```
+
+## 数据模型
+
+### User
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int (PK) | Telegram user ID |
+| username | str? | @username |
+| display_name | str? | 昵称 |
+| allowed | bool | 是否允许使用 |
+| notes | str? | 备注 |
+| added_at | datetime | 首次出现时间 |
+| last_seen_at | datetime? | 最后活跃时间 |
+
+### Group
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int (PK) | 自增 |
+| name | str | 分组名 |
+| icon | str | 图标 emoji，默认 📁 |
+| parent_id | int? (FK→groups.id) | 父分组 |
+| path | str | 物化路径，如 `/旅行/日本` |
+| created_at | datetime | 创建时间 |
+
+### Message
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| id | int (PK) | 自增 |
+| telegram_message_id | int | Telegram 消息 ID |
+| user_id | int (FK→users.id) | 发送者 |
+| chat_id | int | 聊天 ID |
+| type | str | text/photo/video/document/voice/audio/animation/sticker |
+| text | str? | 文本内容或 caption |
+| file_path | str? | 媒体文件相对路径 |
+| file_size | int? | 文件字节数 |
+| mime_type | str? | MIME 类型 |
+| duration | int? | 时长（秒） |
+| width | int? | 宽度 |
+| height | int? | 高度 |
+| forwarded_from | str? | 转发来源 |
+| group_id | int? (FK→groups.id) | 所属分组 |
+| bundle_id | str? | 关联标识（mg_xxx / fwd_xxx） |
+| raw_json | str | 原始消息 JSON |
+| created_at | datetime | 保存时间 |
 
 ## 配置
 
@@ -129,8 +223,6 @@ http://nas-ip:8080
 
 ### 本地开发（uv）
 
-本地只跑 Web 后台时，可以用测试环境变量启动：
-
 ```powershell
 $env:BOT_TOKEN='123:ABC'
 $env:BOT_OWNER_ID='1'
@@ -145,37 +237,9 @@ $env:WEB_PORT='8080'
 uv run --with-requirements requirements.txt uvicorn app.web.main:build_app --factory --host 127.0.0.1 --port 8080
 ```
 
-访问：
-
-```text
-http://127.0.0.1:8080
-```
-
-登录密码就是上面设置的 `ADMIN_PASSWORD`。
-
-完整 Bot + Web 运行仍建议走 Docker，因为它依赖 `telegram-bot-api server` 和 SSH SOCKS 隧道。
-
-## 开发状态
-
-已完成：
-
-- 基础 Python 包结构
-- 配置模型
-- SQLite 表结构
-- Bot 白名单、命令、消息接收和媒体保存
-- Web 登录、仪表盘、消息、用户、日志、配置页面
-- 后台 JSON API
-- Dockerfile、docker-compose、entrypoint
-- 文档和手动测试入口
-
-待实现：
-
-- NAS / Telegram 真实环境联调
-- 大文件 100MB / 500MB 手动验收
-- 后续 Phase 2 功能：URL 抓取、全文检索、标签 UI 等
-
 ## 文档
 
-详细需求见 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)。
-
-开发说明见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+- 需求：[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)
+- 开发：[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- 接口：[docs/API.md](docs/API.md)
+- UI 重构说明：[后台管理UI重构说明.md](后台管理UI重构说明.md)
