@@ -34,6 +34,8 @@ async def main() -> None:
 
     await bot_app.initialize()
     await bot_app.start()
+    if bot_app.post_init:
+        await bot_app.post_init(bot_app)
     await bot_app.updater.start_polling()
 
     logger.info("Bot running, web at :%s", settings.web_port)
