@@ -10,6 +10,7 @@ const routes = {
   dashboard: ["仪表盘", "今日概览"],
   messages: ["消息列表", "搜索 / 筛选"],
   users: ["用户白名单", "访问控制"],
+  groups: ["分组管理", "资源分类"],
   logs: ["日志查看", "运行记录"],
   settings: ["设置页", "系统配置"],
 };
@@ -40,6 +41,7 @@ function bindElements() {
     "heroSummary", "recentMessages", "typeDistribution", "messageSearch", "typeFilter",
     "dateFrom", "dateTo", "prevPageBtn", "nextPageBtn", "messageRows", "userSearch",
     "allowedFilter", "userRows", "logLevelFilter", "logSearch", "refreshLogsBtn",
+    "addRootGroupBtn", "groupTree",
     "logRows", "settingsList", "modalBackdrop", "modalBox", "modalTitle", "modalBody",
     "modalFoot", "modalClose", "toastStack",
   ].forEach((id) => {
@@ -85,6 +87,7 @@ function bindEvents() {
 
   els.userSearch?.addEventListener("input", debounce(renderUsers, 200));
   els.allowedFilter?.addEventListener("change", renderUsers);
+  els.addRootGroupBtn?.addEventListener("click", () => promptCreateGroup(null));
   els.logLevelFilter?.addEventListener("change", loadLogs);
   els.logSearch?.addEventListener("input", debounce(loadLogs, 250));
   els.refreshLogsBtn?.addEventListener("click", loadLogs);
@@ -122,6 +125,7 @@ async function loadRoute(route, noisy) {
     if (route === "dashboard") await loadDashboard();
     if (route === "messages") await loadMessages();
     if (route === "users") await loadUsers();
+    if (route === "groups") await loadGroups();
     if (route === "logs") await loadLogs();
     if (route === "settings") await loadSettings();
     if (noisy) showToast("已刷新", "success");
@@ -427,6 +431,113 @@ function renderLogs(lines) {
       </div>
     `;
   }).join("") || `<div class="empty">暂无日志</div>`;
+}
+
+async function loadGroups() {
+  const data = await api("/api/groups");
+  renderGroupTree(data.items || []);
+}
+
+function renderGroupTree(items) {
+  if (!items.length) {
+    els.groupTree.innerHTML = '<div class="empty">还没有分组。点击上方按钮创建第一个分组。</div>';
+    return;
+  }
+  els.groupTree.innerHTML = items.map((g) => {
+    const depth = g.path.split("/").filter(Boolean).length - 1;
+    const indent = depth * 28;
+    return `
+      <div class="group-row" style="padding-left:${indent}px">
+        <div class="group-info">
+          <span>📁</span>
+          <strong>${escapeHtml(g.name)}</strong>
+          <span class="pill">${g.message_count} 条</span>
+          <span class="group-path">${escapeHtml(g.path)}</span>
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn icon-btn--success" title="新建子分组" data-group-add="${g.id}">+</button>
+          <button class="icon-btn" title="重命名" data-group-rename="${g.id}" data-group-name="${escapeAttr(g.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="icon-btn icon-btn--danger" title="删除分组" data-group-delete="${g.id}" data-group-name="${escapeAttr(g.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2m1 0v14H7V6h10zM10 10v7m4-7v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-group-add]").forEach((btn) => {
+    btn.addEventListener("click", () => promptCreateGroup(Number(btn.dataset.groupAdd)));
+  });
+  document.querySelectorAll("[data-group-rename]").forEach((btn) => {
+    btn.addEventListener("click", () => promptRenameGroup(Number(btn.dataset.groupRename), btn.dataset.groupName));
+  });
+  document.querySelectorAll("[data-group-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => confirmDeleteGroup(Number(btn.dataset.groupDelete), btn.dataset.groupName));
+  });
+}
+
+function promptCreateGroup(parentId) {
+  const label = parentId ? "新建子分组" : "新建根分组";
+  openModal({
+    title: label,
+    small: true,
+    body: `<div class="field"><label for="groupNameInput">分组名称</label><input id="groupNameInput" placeholder="例：旅行"></div>`,
+    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmCreateGroup">创建</button>`,
+  });
+  const input = document.getElementById("groupNameInput");
+  input.focus();
+  const confirm = document.getElementById("confirmCreateGroup");
+  const doCreate = async () => {
+    const name = input.value.trim();
+    if (!name) return showToast("名称不能为空", "error");
+    try {
+      await api("/api/groups", { method: "POST", body: JSON.stringify({ name, parent_id: parentId }) });
+      closeModal();
+      showToast("分组已创建", "success");
+      await loadGroups();
+    } catch (e) { handleApiError(e); }
+  };
+  confirm.addEventListener("click", doCreate);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doCreate(); });
+}
+
+function promptRenameGroup(id, oldName) {
+  openModal({
+    title: "重命名分组",
+    small: true,
+    body: `<div class="field"><label for="renameInput">新名称</label><input id="renameInput" value="${escapeAttr(oldName)}"></div>`,
+    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmRenameGroup">保存</button>`,
+  });
+  const input = document.getElementById("renameInput");
+  input.focus();
+  input.select();
+  const doRename = async () => {
+    const name = input.value.trim();
+    if (!name) return showToast("名称不能为空", "error");
+    try {
+      await api(`/api/groups/${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+      closeModal();
+      showToast("已重命名", "success");
+      await loadGroups();
+    } catch (e) { handleApiError(e); }
+  };
+  document.getElementById("confirmRenameGroup").addEventListener("click", doRename);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doRename(); });
+}
+
+function confirmDeleteGroup(id, name) {
+  openModal({
+    title: "删除分组",
+    small: true,
+    body: `<p>确定删除分组「${escapeHtml(name)}」？</p><p style="color:var(--muted)">子分组会移到上级，分组内消息不会被删除。</p>`,
+    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn danger" id="confirmDeleteGroup">删除</button>`,
+  });
+  document.getElementById("confirmDeleteGroup").addEventListener("click", async () => {
+    try {
+      await api(`/api/groups/${id}`, { method: "DELETE" });
+      closeModal();
+      showToast("分组已删除", "success");
+      await loadGroups();
+    } catch (e) { handleApiError(e); }
+  });
 }
 
 async function loadSettings() {

@@ -24,6 +24,10 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 1v7m-3.5-3.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 用户白名单
             </a>
+            <a href="#groups" data-route="groups">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                分组管理
+            </a>
             <a href="#logs" data-route="logs">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16H6V4Zm3 5h6m-6 4h6m-6 4h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 日志查看
@@ -149,6 +153,17 @@
                         <thead><tr><th>用户</th><th>权限</th><th>消息数</th><th>最后活跃</th><th>备注</th><th style="text-align:right">操作</th></tr></thead>
                         <tbody id="userRows"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <div id="groups" class="view">
+                <div class="toolbar">
+                    <div class="filters">
+                        <button class="btn primary" id="addRootGroupBtn">+ 新建根分组</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="group-tree" id="groupTree"></div>
                 </div>
             </div>
 

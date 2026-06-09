@@ -1152,3 +1152,30 @@ tbody tr:hover {
         padding-right: 18px;
     }
 }
+
+/* ---- Group tree ---- */
+.group-tree { padding: 8px 0; }
+.group-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--sand);
+    transition: background .15s;
+}
+.group-row:hover { background: var(--bg); }
+.group-row:last-child { border-bottom: none; }
+.group-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.group-info strong { font-size: .95rem; }
+.group-path {
+    color: var(--muted);
+    font-size: .8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

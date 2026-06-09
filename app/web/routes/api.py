@@ -10,7 +10,7 @@ from sqlmodel import Session, func, select
 
 from app.config import get_settings
 from app.db import get_session
-from app.models import Message, User
+from app.models import Group, Message, User
 from app.web.auth import require_api_auth, verify_password
 
 router = APIRouter(prefix="/api")
@@ -24,6 +24,15 @@ class LoginRequest(BaseModel):
 
 class NoteRequest(BaseModel):
     notes: str = ""
+
+
+class GroupCreate(BaseModel):
+    name: str
+    parent_id: int | None = None
+
+
+class GroupRename(BaseModel):
+    name: str
 
 
 @router.post("/auth/login")
@@ -180,6 +189,95 @@ async def api_update_user_note_post(
     db: Session = Depends(get_session),
 ):
     return await api_update_user_note(user_id, payload, db)
+
+
+@router.get("/groups", dependencies=[Depends(require_api_auth)])
+async def api_list_groups(db: Session = Depends(get_session)):
+    groups = db.exec(select(Group).order_by(Group.path)).all()
+    counts = dict(
+        db.exec(
+            select(Message.group_id, func.count())
+            .where(Message.group_id.isnot(None))
+            .group_by(Message.group_id)
+        ).all()
+    )
+    return {
+        "items": [
+            {
+                "id": g.id, "name": g.name, "parent_id": g.parent_id,
+                "path": g.path, "message_count": counts.get(g.id, 0),
+            }
+            for g in groups
+        ]
+    }
+
+
+@router.post("/groups", dependencies=[Depends(require_api_auth)])
+async def api_create_group(payload: GroupCreate, db: Session = Depends(get_session)):
+    if payload.parent_id:
+        parent = db.get(Group, payload.parent_id)
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent group not found")
+        path = f"{parent.path}/{payload.name}"
+    else:
+        path = f"/{payload.name}"
+    existing = db.exec(select(Group).where(Group.path == path)).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Group already exists at this path")
+    group = Group(name=payload.name, parent_id=payload.parent_id, path=path, created_at=datetime.utcnow())
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+    return {"id": group.id, "name": group.name, "path": group.path}
+
+
+@router.patch("/groups/{group_id}", dependencies=[Depends(require_api_auth)])
+async def api_rename_group(group_id: int, payload: GroupRename, db: Session = Depends(get_session)):
+    group = db.get(Group, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    old_path = group.path
+    if group.parent_id:
+        parent = db.get(Group, group.parent_id)
+        new_path = f"{parent.path}/{payload.name}" if parent else f"/{payload.name}"
+    else:
+        new_path = f"/{payload.name}"
+    group.name = payload.name
+    group.path = new_path
+    for d in db.exec(select(Group).where(Group.path.startswith(old_path + "/"))).all():
+        d.path = new_path + d.path[len(old_path):]
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/groups/{group_id}", dependencies=[Depends(require_api_auth)])
+async def api_delete_group(group_id: int, db: Session = Depends(get_session)):
+    group = db.get(Group, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    parent_id = group.parent_id
+    for child in db.exec(select(Group).where(Group.parent_id == group_id)).all():
+        child.parent_id = parent_id
+    for msg in db.exec(select(Message).where(Message.group_id == group_id)).all():
+        msg.group_id = parent_id
+    db.delete(group)
+    db.commit()
+    _rebuild_group_paths(db)
+    return {"ok": True}
+
+
+def _rebuild_group_paths(db: Session):
+    groups = db.exec(select(Group)).all()
+    gmap = {g.id: g for g in groups}
+
+    def _path(g):
+        if g.parent_id and g.parent_id in gmap:
+            return f"{_path(gmap[g.parent_id])}/{g.name}"
+        return f"/{g.name}"
+
+    for g in groups:
+        g.path = _path(g)
+    db.commit()
 
 
 @router.get("/logs", dependencies=[Depends(require_api_auth)])
