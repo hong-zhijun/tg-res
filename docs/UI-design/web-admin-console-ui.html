@@ -1,0 +1,816 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Archive Admin Console</title>
+  <style>
+    :root {
+      --bg: #f5f4ed;
+      --surface: #faf9f5;
+      --white: #ffffff;
+      --sand: #e8e6dc;
+      --fg: #141413;
+      --fg-2: #3d3d3a;
+      --muted: #5e5d59;
+      --muted-2: #87867f;
+      --border: #f0eee6;
+      --border-strong: #e8e6dc;
+      --dark: #30302e;
+      --accent: #c96442;
+      --accent-2: #d97757;
+      --danger: #b53333;
+      --success: #3f7a58;
+      --warn: #9a6b2f;
+      --focus: #3898ec;
+      --shadow: rgba(20, 20, 19, 0.05) 0px 4px 24px;
+      --ring: 0 0 0 1px #d1cfc5;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 28px;
+      --font-display: "Anthropic Serif", Georgia, "Times New Roman", serif;
+      --font-body: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      --font-mono: "Anthropic Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); font-family: var(--font-body); }
+    body { overflow-x: hidden; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+
+    .app-shell { min-height: 100vh; display: grid; grid-template-columns: 264px minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; padding: 22px 18px;
+      background: color-mix(in srgb, var(--surface) 88%, var(--bg));
+      border-right: 1px solid var(--border-strong);
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 18px; border-bottom: 1px solid var(--border); }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 12px; background: var(--fg); color: var(--surface);
+      display: grid; place-items: center; font-family: var(--font-display); font-size: 21px; box-shadow: var(--ring);
+    }
+    .brand h1 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 24px; line-height: 1; }
+    .brand p { margin: 4px 0 0; font-size: 12px; color: var(--muted-2); }
+
+    .nav { display: grid; gap: 6px; }
+    .nav a {
+      min-height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+      border-radius: var(--radius-md); color: var(--muted); border: 1px solid transparent;
+    }
+    .nav a:hover { color: var(--fg); background: var(--white); border-color: var(--border); }
+    .nav a.active { color: var(--fg); background: var(--sand); box-shadow: var(--ring); }
+    .nav svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+    .sidebar-foot { margin-top: auto; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow); }
+    .sidebar-foot strong { display: block; font-size: 14px; margin-bottom: 8px; }
+    .health { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success) 15%, transparent); }
+
+    .main { min-width: 0; display: flex; flex-direction: column; }
+    .topbar {
+      position: sticky; top: 0; z-index: 8; height: 70px; padding: 0 30px;
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      background: color-mix(in srgb, var(--bg) 90%, transparent);
+      backdrop-filter: blur(16px); border-bottom: 1px solid var(--border);
+    }
+    .mobile-menu { display: none; }
+    .page-title { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .page-title h2 { margin: 0; font-family: var(--font-display); font-size: clamp(28px, 3vw, 42px); font-weight: 500; line-height: 1.05; white-space: nowrap; }
+    .crumb { color: var(--muted-2); font-size: 14px; white-space: nowrap; }
+
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .search {
+      width: min(360px, 32vw); height: 42px; display: flex; align-items: center; gap: 8px;
+      padding: 0 12px; background: var(--white); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md); box-shadow: 0 0 0 1px rgba(20,20,19,0.02);
+    }
+    .search input { width: 100%; border: 0; background: transparent; outline: 0; color: var(--fg); }
+    .btn {
+      min-height: 40px; border: 0; border-radius: var(--radius-md); padding: 0 14px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--sand); color: var(--fg-2); box-shadow: var(--ring);
+      transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .btn:hover { transform: translateY(-1px); background: var(--white); }
+    .btn.primary { background: var(--accent); color: var(--surface); box-shadow: 0 0 0 1px var(--accent); }
+    .btn.dark { background: var(--fg); color: var(--surface); box-shadow: 0 0 0 1px var(--dark); }
+    .btn.ghost { background: transparent; box-shadow: none; border: 1px solid var(--border-strong); }
+    .btn.danger { background: color-mix(in srgb, var(--danger) 10%, var(--white)); color: var(--danger); box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 20%, var(--border)); }
+
+    .content { padding: 30px; width: 100%; max-width: 1500px; margin: 0 auto; }
+    .view { display: none; animation: fade .22s ease both; }
+    .view.active { display: block; }
+    @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .grid { display: grid; gap: 18px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow); padding: 22px;
+    }
+    .card.dark { background: var(--fg); color: var(--surface); border-color: var(--dark); }
+    .card h3 { margin: 0 0 14px; font-family: var(--font-display); font-size: 26px; font-weight: 500; line-height: 1.15; }
+    .metric { display: flex; flex-direction: column; gap: 10px; min-height: 136px; }
+    .metric .label { color: var(--muted); font-size: 14px; }
+    .metric .value { font-family: var(--font-display); font-weight: 500; font-size: clamp(34px, 4vw, 54px); line-height: 1; }
+    .metric .delta { color: var(--muted); font-size: 13px; }
+    .metric .delta.good { color: var(--success); }
+    .metric .delta.warn { color: var(--warn); }
+
+    .hero-card {
+      position: relative; overflow: hidden; min-height: 280px; padding: 30px;
+      display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); gap: 24px; align-items: center;
+    }
+    .hero-card h3 { font-size: clamp(34px, 4vw, 58px); max-width: 680px; }
+    .hero-card p { max-width: 620px; color: var(--muted); line-height: 1.65; margin: 0 0 22px; }
+    .ink-illustration { min-height: 210px; border-radius: var(--radius-xl); background: var(--white); border: 1px solid var(--border-strong); display: grid; place-items: center; overflow: hidden; }
+    .ink-illustration svg { width: min(360px, 100%); height: auto; }
+
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .control {
+      height: 40px; border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+      background: var(--white); color: var(--fg); padding: 0 12px; outline: 0;
+    }
+    .control:focus { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 14%, transparent); }
+
+    .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th, td { padding: 15px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { color: var(--muted-2); font-size: 12px; font-weight: 500; letter-spacing: .12px; background: color-mix(in srgb, var(--surface) 88%, var(--white)); }
+    td { font-size: 14px; color: var(--fg-2); }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: color-mix(in srgb, var(--sand) 36%, transparent); }
+    .title-cell { display: flex; align-items: center; gap: 12px; min-width: 270px; }
+    .avatar {
+      width: 38px; height: 38px; border-radius: 13px; background: var(--sand); display: grid; place-items: center;
+      color: var(--fg); font-family: var(--font-display); font-size: 18px; flex: 0 0 auto;
+    }
+    .title-cell strong { display: block; color: var(--fg); margin-bottom: 3px; font-weight: 500; }
+    .title-cell span { color: var(--muted-2); font-size: 12px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px;
+      border-radius: 999px; font-size: 12px; border: 1px solid var(--border-strong); background: var(--white); color: var(--muted);
+      white-space: nowrap;
+    }
+    .pill.success { color: var(--success); background: color-mix(in srgb, var(--success) 9%, var(--white)); border-color: color-mix(in srgb, var(--success) 16%, var(--border)); }
+    .pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--white)); border-color: color-mix(in srgb, var(--warn) 18%, var(--border)); }
+    .pill.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--white)); border-color: color-mix(in srgb, var(--danger) 18%, var(--border)); }
+    .row-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .icon-btn {
+      width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border-strong);
+      background: var(--white); color: var(--fg-2); display: inline-grid; place-items: center;
+    }
+    .icon-btn:hover { background: var(--sand); }
+
+    .activity { display: grid; gap: 12px; }
+    .activity-item { display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .activity-item:last-child { border-bottom: 0; }
+    .activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+    .activity-item strong { display: block; font-weight: 500; color: var(--fg); margin-bottom: 4px; }
+    .activity-item span, .activity-item time { color: var(--muted-2); font-size: 13px; }
+
+    .login-screen {
+      min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
+      background: var(--bg);
+    }
+    .login-art {
+      padding: clamp(32px, 6vw, 80px); display: flex; flex-direction: column; justify-content: space-between;
+      background: var(--fg); color: var(--surface); min-height: 100vh;
+    }
+    .login-art h1 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(46px, 7vw, 88px); line-height: 1.05; max-width: 760px; }
+    .login-art p { color: var(--warm-silver, #b0aea5); max-width: 560px; line-height: 1.7; font-size: 18px; }
+    .login-card-wrap { display: grid; place-items: center; padding: 30px; }
+    .login-card { width: min(100%, 420px); }
+    .field { display: grid; gap: 8px; margin-bottom: 16px; }
+    .field label { font-size: 13px; color: var(--muted); }
+    .field input, .field textarea {
+      width: 100%; min-height: 46px; border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+      background: var(--white); padding: 10px 12px; outline: 0; color: var(--fg);
+    }
+    .field textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
+    .field input:focus, .field textarea:focus { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 14%, transparent); }
+
+    .settings-list { display: grid; gap: 12px; }
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--white);
+    }
+    .setting-row strong { display: block; font-weight: 500; margin-bottom: 4px; }
+    .setting-row span { color: var(--muted-2); font-size: 13px; }
+    .switch {
+      position: relative; width: 48px; height: 28px; border-radius: 999px; border: 0; background: var(--sand); box-shadow: inset 0 0 0 1px var(--border-strong); flex: 0 0 auto;
+    }
+    .switch::after {
+      content: ""; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; border-radius: 50%;
+      background: var(--white); box-shadow: 0 1px 4px rgba(0,0,0,.12); transition: transform .18s ease;
+    }
+    .switch.on { background: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .switch.on::after { transform: translateX(20px); }
+
+    .log-line {
+      display: grid; grid-template-columns: 86px 170px 96px 1fr; gap: 12px; align-items: start;
+      padding: 13px 16px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 13px;
+    }
+    .log-line:last-child { border-bottom: 0; }
+    .log-line code { white-space: normal; color: var(--fg-2); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 40; background: rgba(20,20,19,.38);
+      display: none; align-items: center; justify-content: center; padding: 22px;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      width: min(720px, 100%); max-height: min(86vh, 820px); overflow: auto;
+      background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-xl);
+      box-shadow: rgba(20,20,19,.20) 0 24px 80px; animation: modalIn .18s ease both;
+    }
+    .modal.small { width: min(460px, 100%); }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+    .modal-head { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 24px 24px 16px; border-bottom: 1px solid var(--border); }
+    .modal-head h3 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 30px; line-height: 1.1; }
+    .modal-body { padding: 22px 24px; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px 24px; border-top: 1px solid var(--border); }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .detail-item { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--white); }
+    .detail-item span { display: block; color: var(--muted-2); font-size: 12px; margin-bottom: 6px; }
+    .detail-item strong { font-weight: 500; color: var(--fg); }
+    .message-body { padding: 18px; border-radius: var(--radius-lg); background: var(--white); border: 1px solid var(--border); line-height: 1.7; color: var(--fg-2); }
+    .media-box { margin-top: 14px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--sand) 45%, var(--white)); padding: 18px; color: var(--muted); }
+
+    .toast-stack { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: grid; gap: 10px; }
+    .toast {
+      min-width: min(360px, calc(100vw - 40px)); padding: 14px 16px; border-radius: var(--radius-md);
+      background: var(--fg); color: var(--surface); box-shadow: rgba(20,20,19,.18) 0 14px 40px;
+      display: flex; align-items: center; gap: 10px; animation: toastIn .22s ease both;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .mobile-scrim { display: none; }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--font-mono); }
+    .hide { display: none !important; }
+
+    @media (max-width: 1180px) {
+      .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero-card { grid-template-columns: 1fr; }
+      .ink-illustration { min-height: 180px; }
+    }
+    @media (max-width: 860px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed; left: 0; top: 0; z-index: 30; width: min(86vw, 300px);
+        transform: translateX(-105%); transition: transform .22s ease;
+      }
+      .sidebar.open { transform: none; }
+      .mobile-scrim.show { display: block; position: fixed; inset: 0; z-index: 25; background: rgba(20,20,19,.28); }
+      .topbar { padding: 0 16px; height: 64px; }
+      .mobile-menu { display: inline-grid; }
+      .search { display: none; }
+      .page-title { gap: 8px; }
+      .page-title h2 { font-size: 27px; }
+      .crumb { display: none; }
+      .content { padding: 18px 14px 28px; }
+      .grid.cols-3, .grid.cols-2, .grid.cols-4 { grid-template-columns: 1fr; }
+      .login-screen { grid-template-columns: 1fr; }
+      .login-art { min-height: auto; gap: 28px; }
+      .login-card-wrap { min-height: auto; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .log-line { grid-template-columns: 1fr; gap: 6px; }
+    }
+    @media (max-width: 430px) {
+      .top-actions .btn:not(.mobile-menu) { display: none; }
+      .hero-card { padding: 22px; }
+      .card { padding: 18px; border-radius: 16px; }
+      .toolbar { align-items: stretch; }
+      .filters, .filters .control { width: 100%; }
+      .filters .control { flex: 1 1 100%; }
+      .modal { border-radius: 20px; }
+      .modal-head, .modal-body, .modal-foot { padding-left: 18px; padding-right: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loginView" class="login-screen hide">
+    <section class="login-art">
+      <div class="brand" style="border-color:#30302e;padding:0">
+        <div class="brand-mark" style="background:#faf9f5;color:#141413">A</div>
+        <div>
+          <h1 style="color:#faf9f5;font-size:24px">Archive Admin</h1>
+          <p style="margin:4px 0 0;font-size:12px">内部管理后台</p>
+        </div>
+      </div>
+      <div>
+        <h1>管理剪藏、用户与运行状态。</h1>
+        <p>统一处理消息归档、媒体资源、白名单与系统日志。弹层和 toast 已使用同一套视觉规范。</p>
+      </div>
+    </section>
+    <section class="login-card-wrap">
+      <form class="card login-card" id="loginForm">
+        <h3>登录</h3>
+        <div class="field">
+          <label for="email">账号</label>
+          <input id="email" value="admin@example.com" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <input id="password" type="password" value="admin123" autocomplete="current-password" />
+        </div>
+        <button class="btn primary" type="submit" style="width:100%;height:46px">进入后台</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="appView" class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">A</div>
+        <div>
+          <h1>Archive</h1>
+          <p>Admin Console</p>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <a href="#dashboard" data-route="dashboard"><svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V4h-7v16ZM4 20h7v-5H4v5Z" stroke="currentColor" stroke-width="1.7"/></svg>仪表盘</a>
+        <a href="#messages" data-route="messages"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h14v10H8l-3 3V6Z" stroke="currentColor" stroke-width="1.7"/></svg>消息列表</a>
+        <a href="#users" data-route="users"><svg viewBox="0 0 24 24" fill="none"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 1v7m-3.5-3.5h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>用户白名单</a>
+        <a href="#logs" data-route="logs"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16H6V4Zm3 5h6m-6 4h6m-6 4h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>日志查看</a>
+        <a href="#settings" data-route="settings"><svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm0-12v2m0 13v2m8.5-8.5h-2m-13 0h-2m14.3-6.3-1.4 1.4m-8.8 8.8-1.4 1.4m0-11.6 1.4 1.4m8.8 8.8 1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>设置页</a>
+      </nav>
+      <div class="sidebar-foot">
+        <strong>服务状态</strong>
+        <div class="health"><i class="dot"></i><span>Bot / API / Worker 正常</span></div>
+      </div>
+    </aside>
+    <div class="mobile-scrim" id="scrim"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="page-title">
+          <button class="icon-btn mobile-menu" id="menuBtn" aria-label="打开菜单">☰</button>
+          <h2 id="pageTitle">仪表盘</h2>
+          <span class="crumb" id="pageCrumb">今日概览</span>
+        </div>
+        <div class="top-actions">
+          <label class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input id="globalSearch" placeholder="搜索消息、用户、日志" />
+          </label>
+          <button class="btn ghost" id="logoutBtn">退出</button>
+          <button class="btn primary" id="syncBtn">同步</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div id="dashboard" class="view">
+          <div class="grid" style="gap:22px">
+            <section class="card hero-card">
+              <div>
+                <h3>剪藏后台运行中。</h3>
+                <p>今日新增消息 128 条，媒体队列已清空。白名单命中率稳定，最近一次同步在 3 分钟前完成。</p>
+                <div class="filters">
+                  <a class="btn primary" href="#messages">查看消息</a>
+                  <button class="btn" data-toast="已触发手动同步">手动同步</button>
+                </div>
+              </div>
+              <div class="ink-illustration" aria-hidden="true">
+                <svg viewBox="0 0 420 260" fill="none">
+                  <path d="M64 181c34-69 74-102 120-99 69 5 64 107 132 71 28-14 39-42 42-72" stroke="#141413" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M84 62c44 14 74 12 107-8" stroke="#c96442" stroke-width="7" stroke-linecap="round"/>
+                  <path d="M76 196c48 21 100 27 156 18 46-7 83-25 111-52" stroke="#c96442" stroke-width="5" stroke-linecap="round"/>
+                  <circle cx="305" cy="88" r="30" fill="#e8e6dc" stroke="#141413" stroke-width="4"/>
+                  <path d="M294 91h24M306 79v24" stroke="#141413" stroke-width="4" stroke-linecap="round"/>
+                  <path d="M119 121h76M119 142h45" stroke="#5e5d59" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </section>
+
+            <section class="grid cols-4">
+              <article class="card metric">
+                <span class="label">今日消息</span>
+                <span class="value">128</span>
+                <span class="delta good">+18 较昨日</span>
+              </article>
+              <article class="card metric">
+                <span class="label">待处理媒体</span>
+                <span class="value">0</span>
+                <span class="delta good">队列已清空</span>
+              </article>
+              <article class="card metric">
+                <span class="label">白名单用户</span>
+                <span class="value">42</span>
+                <span class="delta">3 个临时授权</span>
+              </article>
+              <article class="card metric">
+                <span class="label">错误日志</span>
+                <span class="value">2</span>
+                <span class="delta warn">过去 24 小时</span>
+              </article>
+            </section>
+
+            <section class="grid cols-2">
+              <article class="card">
+                <h3>最近活动</h3>
+                <div class="activity">
+                  <div class="activity-item"><i class="activity-dot"></i><div><strong>保存消息 #TG-2841</strong><span>来自产品资料频道，含 2 个附件</span></div><time>2 分钟前</time></div>
+                  <div class="activity-item"><i class="activity-dot"></i><div><strong>用户权限更新</strong><span>@mia 已加入白名单</span></div><time>18 分钟前</time></div>
+                  <div class="activity-item"><i class="activity-dot"></i><div><strong>媒体清理完成</strong><span>删除 4 个过期临时文件</span></div><time>1 小时前</time></div>
+                </div>
+              </article>
+              <article class="card dark">
+                <h3>队列状态</h3>
+                <div class="activity">
+                  <div class="activity-item" style="border-color:#30302e"><i class="activity-dot"></i><div><strong style="color:#faf9f5">collector</strong><span>idle，等待下一次 webhook</span></div><time>online</time></div>
+                  <div class="activity-item" style="border-color:#30302e"><i class="activity-dot"></i><div><strong style="color:#faf9f5">media-worker</strong><span>0 waiting / 0 failed</span></div><time>online</time></div>
+                  <div class="activity-item" style="border-color:#30302e"><i class="activity-dot"></i><div><strong style="color:#faf9f5">database</strong><span>last vacuum: 03:20</span></div><time>healthy</time></div>
+                </div>
+              </article>
+            </section>
+          </div>
+        </div>
+
+        <div id="messages" class="view">
+          <div class="toolbar">
+            <div class="filters">
+              <input id="messageSearch" class="control" placeholder="搜索标题、发送者、正文" />
+              <select id="typeFilter" class="control">
+                <option value="all">全部类型</option>
+                <option value="text">文本</option>
+                <option value="image">图片</option>
+                <option value="file">文件</option>
+              </select>
+              <select id="statusFilter" class="control">
+                <option value="all">全部状态</option>
+                <option value="saved">已保存</option>
+                <option value="flagged">已标记</option>
+              </select>
+            </div>
+            <button class="btn primary" id="exportBtn">导出</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>消息</th>
+                  <th>类型</th>
+                  <th>发送者</th>
+                  <th>时间</th>
+                  <th>状态</th>
+                  <th style="text-align:right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="messageRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="users" class="view">
+          <div class="toolbar">
+            <div class="filters">
+              <input class="control" id="userSearch" placeholder="搜索用户名或备注" />
+              <select class="control" id="userRoleFilter">
+                <option value="all">全部权限</option>
+                <option value="admin">管理员</option>
+                <option value="member">成员</option>
+                <option value="temp">临时</option>
+              </select>
+            </div>
+            <button class="btn primary" id="addUserBtn">添加用户</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>用户</th><th>权限</th><th>最近访问</th><th>允许访问</th><th style="text-align:right">操作</th></tr></thead>
+              <tbody id="userRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="logs" class="view">
+          <div class="toolbar">
+            <div class="filters">
+              <select class="control" id="logLevelFilter">
+                <option value="all">全部 level</option>
+                <option value="INFO">INFO</option>
+                <option value="WARN">WARN</option>
+                <option value="ERROR">ERROR</option>
+              </select>
+              <input class="control" id="logSearch" placeholder="搜索日志内容" />
+            </div>
+            <button class="btn" data-toast="日志已刷新">刷新</button>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div id="logRows"></div>
+          </div>
+        </div>
+
+        <div id="settings" class="view">
+          <div class="grid cols-2">
+            <section class="card">
+              <h3>基础设置</h3>
+              <div class="settings-list">
+                <div class="field"><label>Bot Token</label><input value="••••••••••••••••••••••" /></div>
+                <div class="field"><label>归档目录</label><input value="/data/archive" /></div>
+                <div class="field"><label>最大附件大小</label><input value="128 MB" /></div>
+                <button class="btn primary" data-toast="设置已保存">保存设置</button>
+              </div>
+            </section>
+            <section class="card">
+              <h3>开关</h3>
+              <div class="settings-list">
+                <div class="setting-row"><div><strong>自动下载媒体</strong><span>保存图片、视频和文件附件</span></div><button class="switch on" aria-label="自动下载媒体"></button></div>
+                <div class="setting-row"><div><strong>仅白名单可用</strong><span>拒绝未知用户发起归档</span></div><button class="switch on" aria-label="仅白名单可用"></button></div>
+                <div class="setting-row"><div><strong>错误通知</strong><span>出现 ERROR 时推送给管理员</span></div><button class="switch" aria-label="错误通知"></button></div>
+                <div class="setting-row"><div><strong>定期清理临时文件</strong><span>每天 03:00 执行</span></div><button class="switch on" aria-label="定期清理"></button></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal" id="modalBox">
+      <div class="modal-head">
+        <h3 id="modalTitle">标题</h3>
+        <button class="icon-btn" id="modalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-foot" id="modalFoot"></div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  <script>
+    const routes = {
+      dashboard: ["仪表盘", "今日概览"],
+      messages: ["消息列表", "搜索 / 筛选"],
+      users: ["用户白名单", "访问控制"],
+      logs: ["日志查看", "运行记录"],
+      settings: ["设置页", "系统配置"]
+    };
+
+    const messages = [
+      { id: "TG-2841", title: "Q1 产品资料汇总", desc: "包含路线图截图与三份 PDF", type: "file", typeText: "文件", sender: "@lin", time: "2026-06-05 10:24", status: "saved", statusText: "已保存", body: "这里是 Q1 产品资料的整理，包含路线图截图、竞品调研 PDF 与发布计划。请优先归档到 product/research 目录。", media: "roadmap.png, research.pdf, launch-plan.pdf" },
+      { id: "TG-2838", title: "客户反馈截图", desc: "移动端表单问题", type: "image", typeText: "图片", sender: "@mia", time: "2026-06-05 09:41", status: "flagged", statusText: "已标记", body: "客户在移动端提交表单时遇到输入框遮挡问题，截图如下。", media: "feedback-mobile.png" },
+      { id: "TG-2827", title: "部署提醒", desc: "Worker 重启完成", type: "text", typeText: "文本", sender: "@ops", time: "2026-06-04 22:18", status: "saved", statusText: "已保存", body: "media-worker 已完成重启，队列恢复正常。下一步观察 24 小时错误率。", media: "" },
+      { id: "TG-2819", title: "发票附件", desc: "供应商费用", type: "file", typeText: "文件", sender: "@finance", time: "2026-06-04 18:06", status: "saved", statusText: "已保存", body: "供应商五月份发票，请归档到 finance/2026-05。", media: "invoice-may.pdf" },
+      { id: "TG-2803", title: "会议纪要", desc: "后台功能范围确认", type: "text", typeText: "文本", sender: "@admin", time: "2026-06-04 11:32", status: "saved", statusText: "已保存", body: "后台第一版包含登录、仪表盘、消息列表、详情弹层、白名单、日志和设置。", media: "" }
+    ];
+
+    const users = [
+      { name: "@admin", note: "系统管理员", role: "admin", roleText: "管理员", last: "刚刚", allowed: true },
+      { name: "@lin", note: "产品资料", role: "member", roleText: "成员", last: "12 分钟前", allowed: true },
+      { name: "@mia", note: "客户反馈", role: "member", roleText: "成员", last: "1 小时前", allowed: true },
+      { name: "@temp_ops", note: "临时排查", role: "temp", roleText: "临时", last: "昨天", allowed: false }
+    ];
+
+    const logs = [
+      { level: "INFO", time: "10:24:12", source: "collector", text: "message TG-2841 saved with 3 attachments" },
+      { level: "INFO", time: "10:22:08", source: "media-worker", text: "queue drained, pending=0 failed=0" },
+      { level: "WARN", time: "09:41:44", source: "parser", text: "image metadata missing, fallback filename applied" },
+      { level: "ERROR", time: "08:13:02", source: "webhook", text: "telegram retry received duplicate update_id=884210" },
+      { level: "INFO", time: "03:20:00", source: "cleanup", text: "temporary files cleanup completed, removed=4" }
+    ];
+
+    const appView = document.getElementById("appView");
+    const loginView = document.getElementById("loginView");
+    const pageTitle = document.getElementById("pageTitle");
+    const pageCrumb = document.getElementById("pageCrumb");
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const modalBox = document.getElementById("modalBox");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+    const modalFoot = document.getElementById("modalFoot");
+    const sidebar = document.getElementById("sidebar");
+    const scrim = document.getElementById("scrim");
+
+    function currentRoute() {
+      const hash = location.hash.replace("#", "");
+      return hash || "dashboard";
+    }
+
+    function showRoute(route) {
+      if (route === "login") {
+        appView.classList.add("hide");
+        loginView.classList.remove("hide");
+        return;
+      }
+      loginView.classList.add("hide");
+      appView.classList.remove("hide");
+      const safeRoute = routes[route] ? route : "dashboard";
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === safeRoute));
+      document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("active", a.dataset.route === safeRoute));
+      pageTitle.textContent = routes[safeRoute][0];
+      pageCrumb.textContent = routes[safeRoute][1];
+      closeSidebar();
+    }
+
+    function renderMessages() {
+      const q = document.getElementById("messageSearch").value.trim().toLowerCase();
+      const type = document.getElementById("typeFilter").value;
+      const status = document.getElementById("statusFilter").value;
+      const rows = messages.filter(m => {
+        const matchQ = !q || [m.title, m.desc, m.sender, m.body].join(" ").toLowerCase().includes(q);
+        const matchType = type === "all" || m.type === type;
+        const matchStatus = status === "all" || m.status === status;
+        return matchQ && matchType && matchStatus;
+      }).map(m => `
+        <tr>
+          <td>
+            <div class="title-cell">
+              <div class="avatar">${m.type === "image" ? "图" : m.type === "file" ? "文" : "讯"}</div>
+              <div><strong>${m.title}</strong><span>${m.id} · ${m.desc}</span></div>
+            </div>
+          </td>
+          <td><span class="pill">${m.typeText}</span></td>
+          <td>${m.sender}</td>
+          <td>${m.time}</td>
+          <td><span class="pill ${m.status === "flagged" ? "warn" : "success"}">${m.statusText}</span></td>
+          <td>
+            <div class="row-actions">
+              <button class="icon-btn" title="详情" onclick="openMessage('${m.id}')">查看</button>
+              <button class="icon-btn" title="删除" onclick="confirmDelete('${m.id}')">删</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+      document.getElementById("messageRows").innerHTML = rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:34px">没有匹配的消息</td></tr>`;
+    }
+
+    function renderUsers() {
+      const q = document.getElementById("userSearch").value.trim().toLowerCase();
+      const role = document.getElementById("userRoleFilter").value;
+      const rows = users.filter(u => {
+        const matchQ = !q || [u.name, u.note].join(" ").toLowerCase().includes(q);
+        const matchRole = role === "all" || u.role === role;
+        return matchQ && matchRole;
+      }).map((u, idx) => `
+        <tr>
+          <td><div class="title-cell"><div class="avatar">${u.name.slice(1,2).toUpperCase()}</div><div><strong>${u.name}</strong><span>${u.note}</span></div></div></td>
+          <td><span class="pill ${u.role === "admin" ? "success" : u.role === "temp" ? "warn" : ""}">${u.roleText}</span></td>
+          <td>${u.last}</td>
+          <td><button class="switch ${u.allowed ? "on" : ""}" onclick="toggleUser(${idx})" aria-label="允许访问"></button></td>
+          <td><div class="row-actions"><button class="icon-btn" onclick="confirmDeleteUser('${u.name}')">删</button></div></td>
+        </tr>
+      `).join("");
+      document.getElementById("userRows").innerHTML = rows || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:34px">没有匹配的用户</td></tr>`;
+    }
+
+    function renderLogs() {
+      const level = document.getElementById("logLevelFilter").value;
+      const q = document.getElementById("logSearch").value.trim().toLowerCase();
+      const rows = logs.filter(l => {
+        const matchLevel = level === "all" || l.level === level;
+        const matchQ = !q || [l.level, l.time, l.source, l.text].join(" ").toLowerCase().includes(q);
+        return matchLevel && matchQ;
+      }).map(l => `
+        <div class="log-line">
+          <span class="pill ${l.level === "ERROR" ? "danger" : l.level === "WARN" ? "warn" : "success"}">${l.level}</span>
+          <span>${l.time}</span>
+          <span>${l.source}</span>
+          <code>${l.text}</code>
+        </div>
+      `).join("");
+      document.getElementById("logRows").innerHTML = rows || `<div style="padding:34px;text-align:center;color:var(--muted)">没有匹配的日志</div>`;
+    }
+
+    function openModal({ title, body, foot, small = false }) {
+      modalTitle.textContent = title;
+      modalBody.innerHTML = body;
+      modalFoot.innerHTML = foot;
+      modalBox.classList.toggle("small", small);
+      modalBackdrop.classList.add("show");
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove("show");
+    }
+
+    function openMessage(id) {
+      const m = messages.find(item => item.id === id);
+      if (!m) return;
+      openModal({
+        title: m.title,
+        body: `
+          <div class="detail-grid">
+            <div class="detail-item"><span>消息 ID</span><strong>${m.id}</strong></div>
+            <div class="detail-item"><span>发送者</span><strong>${m.sender}</strong></div>
+            <div class="detail-item"><span>类型</span><strong>${m.typeText}</strong></div>
+            <div class="detail-item"><span>时间</span><strong>${m.time}</strong></div>
+          </div>
+          <div class="message-body">${m.body}</div>
+          ${m.media ? `<div class="media-box"><strong>附件</strong><br>${m.media}</div>` : ""}
+        `,
+        foot: `
+          <button class="btn" onclick="copyMessage('${m.id}')">复制 ID</button>
+          <button class="btn danger" onclick="confirmDelete('${m.id}')">删除</button>
+          <button class="btn primary" onclick="closeModal()">完成</button>
+        `
+      });
+    }
+
+    function confirmDelete(id) {
+      openModal({
+        title: "确认删除",
+        body: `<p class="muted" style="line-height:1.7;margin:0">删除后该消息会从列表中移除。当前为 UI 原型，不会真正删除数据。</p>`,
+        foot: `<button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="closeModal();toast('消息 ${id} 已删除')">确认删除</button>`,
+        small: true
+      });
+    }
+
+    function confirmDeleteUser(name) {
+      openModal({
+        title: "移除用户",
+        body: `<p class="muted" style="line-height:1.7;margin:0">确认从白名单移除 ${name}？</p>`,
+        foot: `<button class="btn" onclick="closeModal()">取消</button><button class="btn danger" onclick="closeModal();toast('${name} 已移除')">移除</button>`,
+        small: true
+      });
+    }
+
+    function copyMessage(id) {
+      navigator.clipboard?.writeText(id);
+      toast(`已复制 ${id}`);
+    }
+
+    function toggleUser(idx) {
+      users[idx].allowed = !users[idx].allowed;
+      renderUsers();
+      toast(users[idx].allowed ? "访问已开启" : "访问已关闭");
+    }
+
+    function toast(text) {
+      const stack = document.getElementById("toastStack");
+      const node = document.createElement("div");
+      node.className = "toast";
+      node.innerHTML = `<span class="dot"></span><span>${text}</span>`;
+      stack.appendChild(node);
+      setTimeout(() => {
+        node.style.opacity = "0";
+        node.style.transform = "translateY(8px)";
+        setTimeout(() => node.remove(), 180);
+      }, 2600);
+    }
+
+    function openSidebar() {
+      sidebar.classList.add("open");
+      scrim.classList.add("show");
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove("open");
+      scrim.classList.remove("show");
+    }
+
+    document.getElementById("modalClose").addEventListener("click", closeModal);
+    modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    document.getElementById("menuBtn").addEventListener("click", openSidebar);
+    scrim.addEventListener("click", closeSidebar);
+    document.getElementById("loginForm").addEventListener("submit", (e) => { e.preventDefault(); location.hash = "dashboard"; toast("登录成功"); });
+    document.getElementById("logoutBtn").addEventListener("click", () => { location.hash = "login"; });
+    document.getElementById("syncBtn").addEventListener("click", () => toast("同步已开始"));
+    document.getElementById("exportBtn").addEventListener("click", () => toast("导出任务已创建"));
+    document.getElementById("addUserBtn").addEventListener("click", () => openModal({
+      title: "添加用户",
+      body: `<div class="field"><label>Telegram 用户名</label><input id="newUserName" placeholder="@username" /></div><div class="field"><label>备注</label><input placeholder="用途或团队" /></div>`,
+      foot: `<button class="btn" onclick="closeModal()">取消</button><button class="btn primary" onclick="closeModal();toast('用户已添加')">添加</button>`,
+      small: true
+    }));
+
+    document.querySelectorAll("[data-toast]").forEach(btn => btn.addEventListener("click", () => toast(btn.dataset.toast)));
+    document.querySelectorAll(".switch").forEach(sw => {
+      if (!sw.closest("tbody")) sw.addEventListener("click", () => { sw.classList.toggle("on"); toast("设置已更新"); });
+    });
+
+    ["messageSearch", "typeFilter", "statusFilter"].forEach(id => document.getElementById(id).addEventListener("input", renderMessages));
+    ["userSearch", "userRoleFilter"].forEach(id => document.getElementById(id).addEventListener("input", renderUsers));
+    ["logLevelFilter", "logSearch"].forEach(id => document.getElementById(id).addEventListener("input", renderLogs));
+    document.getElementById("globalSearch").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        location.hash = "messages";
+        document.getElementById("messageSearch").value = e.target.value;
+        renderMessages();
+      }
+    });
+
+    window.addEventListener("hashchange", () => showRoute(currentRoute()));
+    renderMessages();
+    renderUsers();
+    renderLogs();
+    if (!location.hash) location.hash = "dashboard";
+    showRoute(currentRoute());
+  </script>
+</body>
+</html>

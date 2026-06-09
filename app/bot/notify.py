@@ -1,7 +1,7 @@
 import logging
 import traceback
 
-from telegram import BotCommand
+from telegram import BotCommand, MenuButtonCommands
 
 from app.config import get_settings
 
@@ -9,19 +9,29 @@ logger = logging.getLogger(__name__)
 
 
 async def register_commands(app) -> None:
-    await app.bot.set_my_commands(
-        [
-            BotCommand("start", "开始使用"),
-            BotCommand("id", "查看我的 user ID"),
-            BotCommand("stats", "查看统计信息"),
-            BotCommand("search", "搜索历史消息"),
-            BotCommand("queue", "查看下载队列"),
-            BotCommand("groups", "查看分组列表"),
-            BotCommand("newgroup", "创建分组"),
-            BotCommand("mv", "移动消息到分组"),
-            BotCommand("help", "查看命令列表"),
-        ]
-    )
+    try:
+        await app.bot.set_my_commands(
+            [
+                BotCommand("start", "开始使用"),
+                BotCommand("id", "查看我的 user ID"),
+                BotCommand("stats", "查看统计信息"),
+                BotCommand("search", "搜索历史消息"),
+                BotCommand("queue", "查看下载队列"),
+                BotCommand("groups", "查看分组列表"),
+                BotCommand("newgroup", "创建分组"),
+                BotCommand("mv", "移动消息到分组"),
+                BotCommand("help", "查看命令列表"),
+            ]
+        )
+        logger.info("Bot commands registered successfully")
+    except Exception:
+        logger.exception("Failed to register bot commands")
+
+    try:
+        await app.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+        logger.info("Chat menu button set to commands mode")
+    except Exception:
+        logger.exception("Failed to set chat menu button")
 
 
 async def error_handler(update, context) -> None:
