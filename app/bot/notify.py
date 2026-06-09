@@ -15,6 +15,7 @@ async def register_commands(app) -> None:
             BotCommand("id", "查看我的 user ID"),
             BotCommand("stats", "查看统计信息"),
             BotCommand("search", "搜索历史消息"),
+            BotCommand("queue", "查看下载队列"),
             BotCommand("help", "查看命令列表"),
         ]
     )

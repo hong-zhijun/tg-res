@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from sqlmodel import Session, func, select
 
-from app.bot.handlers import record_user_seen, require_allowed
+from app.bot.handlers import get_queue_status, record_user_seen, require_allowed
 from app.config import get_settings
 from app.db import engine
 from app.models import Message
@@ -76,6 +76,11 @@ async def cmd_search(update, context) -> None:
     await update.message.reply_text("\n".join(lines))
 
 
+@require_allowed
+async def cmd_queue(update, context) -> None:
+    await update.message.reply_text(get_queue_status())
+
+
 async def cmd_help(update, context) -> None:
     if update.effective_user:
         record_user_seen(update.effective_user)
@@ -84,6 +89,7 @@ async def cmd_help(update, context) -> None:
         "/id - 查看我的 user_id\n"
         "/stats - 统计信息\n"
         "/search 关键词 - 搜索历史\n"
+        "/queue - 查看下载队列\n"
         "/help - 显示此帮助"
     )
 
