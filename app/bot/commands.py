@@ -1,8 +1,10 @@
 import os
+import shutil
 from datetime import datetime, timedelta
 
 from sqlmodel import Session, func, select
 
+from app.bot.groups import get_all_groups_tree, get_or_create_by_path
 from app.bot.handlers import get_queue_status, record_user_seen, require_allowed
 from app.config import get_settings
 from app.db import engine
@@ -81,6 +83,55 @@ async def cmd_queue(update, context) -> None:
     await update.message.reply_text(get_queue_status())
 
 
+@require_allowed
+async def cmd_groups(update, context) -> None:
+    await update.message.reply_text(get_all_groups_tree())
+
+
+@require_allowed
+async def cmd_newgroup(update, context) -> None:
+    path = " ".join(context.args).strip() if context.args else ""
+    if not path:
+        await update.message.reply_text("用法：/newgroup 分组路径\n例：/newgroup 旅行/日本/东京")
+        return
+    grp = get_or_create_by_path(path)
+    await update.message.reply_text(f"✅ 分组「{grp.path.strip('/')}」已创建")
+
+
+@require_allowed
+async def cmd_mv(update, context) -> None:
+    args = context.args or []
+    if len(args) < 2:
+        await update.message.reply_text("用法：/mv 消息ID 分组路径\n例：/mv 123 旅行/大阪")
+        return
+    try:
+        msg_id = int(args[0])
+    except ValueError:
+        await update.message.reply_text("消息 ID 必须是数字。")
+        return
+    group_path = " ".join(args[1:])
+    grp = get_or_create_by_path(group_path)
+    settings = get_settings()
+    with Session(engine) as session:
+        record = session.get(Message, msg_id)
+        if not record:
+            await update.message.reply_text(f"消息 #{msg_id} 不存在。")
+            return
+        old_path = record.file_path
+        if old_path:
+            filename = os.path.basename(old_path)
+            new_rel = os.path.join(grp.path.strip("/"), filename)
+            old_abs = os.path.join(settings.save_path, old_path)
+            new_abs = os.path.join(settings.save_path, new_rel)
+            if os.path.exists(old_abs):
+                os.makedirs(os.path.dirname(new_abs), exist_ok=True)
+                shutil.move(old_abs, new_abs)
+            record.file_path = new_rel
+        record.group_id = grp.id
+        session.commit()
+    await update.message.reply_text(f"✅ #{msg_id} 已移到「{grp.path.strip('/')}」")
+
+
 async def cmd_help(update, context) -> None:
     if update.effective_user:
         record_user_seen(update.effective_user)
@@ -90,6 +141,9 @@ async def cmd_help(update, context) -> None:
         "/stats - 统计信息\n"
         "/search 关键词 - 搜索历史\n"
         "/queue - 查看下载队列\n"
+        "/groups - 查看分组列表\n"
+        "/newgroup 路径 - 创建分组\n"
+        "/mv ID 路径 - 移动消息到分组\n"
         "/help - 显示此帮助"
     )
 

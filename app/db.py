@@ -22,6 +22,15 @@ def init_db() -> None:
 
     with engine.connect() as conn:
         conn.execute(text("PRAGMA journal_mode=WAL"))
+        # migrate: add columns if missing
+        for stmt in (
+            "ALTER TABLE messages ADD COLUMN group_id INTEGER",
+            "ALTER TABLE messages ADD COLUMN bundle_id TEXT",
+        ):
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass
         conn.commit()
 
     with Session(engine) as session:

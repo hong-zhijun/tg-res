@@ -14,6 +14,7 @@ def build_save_path(
     unique_id: str,
     ext: str,
     original_name: str | None = None,
+    group_path: str | None = None,
 ) -> str:
     safe_unique = "".join(c for c in unique_id if c.isalnum() or c in "-_")[:32]
     if original_name:
@@ -23,7 +24,8 @@ def build_save_path(
             filename += ext
     else:
         filename = f"{msg_id}_{safe_unique}{ext}"
-    return os.path.join(type_, filename)
+    folder = group_path.strip("/") if group_path else type_
+    return os.path.join(folder, filename)
 
 
 def ensure_disk_space(path: str, needed_bytes: int, buffer_mb: int = 100) -> None:

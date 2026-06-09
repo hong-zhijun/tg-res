@@ -1,13 +1,14 @@
 import logging
 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 from telegram.request import HTTPXRequest
 
-from app.bot.commands import cmd_help, cmd_id, cmd_queue, cmd_search, cmd_start, cmd_stats
+from app.bot.commands import cmd_groups, cmd_help, cmd_id, cmd_mv, cmd_newgroup, cmd_queue, cmd_search, cmd_start, cmd_stats
 from app.bot.handlers import (
     handle_animation,
     handle_audio,
     handle_document,
+    handle_group_callback,
     handle_photo,
     handle_sticker,
     handle_text,
@@ -55,6 +56,11 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("search", cmd_search))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("queue", cmd_queue))
+    app.add_handler(CommandHandler("groups", cmd_groups))
+    app.add_handler(CommandHandler("newgroup", cmd_newgroup))
+    app.add_handler(CommandHandler("mv", cmd_mv))
+
+    app.add_handler(CallbackQueryHandler(handle_group_callback, pattern=r"^g[sbn]?:"))
 
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VIDEO, handle_video))

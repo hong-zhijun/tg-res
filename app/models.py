@@ -16,6 +16,16 @@ class User(SQLModel, table=True):
     last_seen_at: Optional[datetime] = None
 
 
+class Group(SQLModel, table=True):
+    __tablename__ = "groups"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    parent_id: Optional[int] = Field(default=None, foreign_key="groups.id", index=True)
+    path: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
 class Message(SQLModel, table=True):
     __tablename__ = "messages"
 
@@ -33,6 +43,8 @@ class Message(SQLModel, table=True):
     width: Optional[int] = None
     height: Optional[int] = None
     forwarded_from: Optional[str] = None
+    group_id: Optional[int] = Field(default=None, foreign_key="groups.id", index=True)
+    bundle_id: Optional[str] = Field(default=None, index=True)
     raw_json: str = Field(default="{}")
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 

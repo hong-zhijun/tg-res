@@ -13,6 +13,10 @@ from app.models import Message
 from app.utils.storage import build_save_path, ensure_disk_space
 
 
+class IncompleteDownloadError(Exception):
+    """Downloaded file is smaller than expected."""
+
+
 def guess_ext(file_path: str | None, mime_type: str | None, fallback: str) -> str:
     if file_path:
         suffix = Path(file_path).suffix
@@ -32,6 +36,7 @@ async def save_telegram_file(
     type_: str,
     ext: str,
     original_name: str | None = None,
+    group_path: str | None = None,
 ) -> tuple[str, int | None]:
     settings = get_settings()
     telegram_file = await bot.get_file(file_id)
@@ -41,6 +46,7 @@ async def save_telegram_file(
         unique_id=telegram_file.file_unique_id,
         ext=ext,
         original_name=original_name,
+        group_path=group_path,
     )
     abs_path = os.path.join(settings.save_path, rel_path)
     os.makedirs(os.path.dirname(abs_path), exist_ok=True)
@@ -52,10 +58,20 @@ async def save_telegram_file(
     else:
         await telegram_file.download_to_drive(abs_path)
 
-    return rel_path, telegram_file.file_size
+    actual_on_disk = os.path.getsize(abs_path)
+    if telegram_file.file_size and actual_on_disk < telegram_file.file_size:
+        try:
+            os.remove(abs_path)
+        except OSError:
+            pass
+        raise IncompleteDownloadError(
+            f"Expected {telegram_file.file_size} bytes, got {actual_on_disk}"
+        )
+
+    return rel_path, actual_on_disk
 
 
-async def save_message_record(msg, type_: str, **fields) -> int:
+async def save_message_record(msg, type_: str, group_id: int | None = None, bundle_id: str | None = None, **fields) -> int:
     msg_date = msg.date
     if msg_date.tzinfo is not None:
         msg_date = msg_date.astimezone(timezone.utc).replace(tzinfo=None)
@@ -69,6 +85,8 @@ async def save_message_record(msg, type_: str, **fields) -> int:
         raw_json=json.dumps(msg.to_dict(), ensure_ascii=False, default=str),
         created_at=msg_date,
         forwarded_from=_extract_forward_origin(msg),
+        group_id=group_id,
+        bundle_id=bundle_id,
         **fields,
     )
     with Session(engine) as session:

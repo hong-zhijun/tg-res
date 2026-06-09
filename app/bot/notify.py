@@ -16,6 +16,9 @@ async def register_commands(app) -> None:
             BotCommand("stats", "查看统计信息"),
             BotCommand("search", "搜索历史消息"),
             BotCommand("queue", "查看下载队列"),
+            BotCommand("groups", "查看分组列表"),
+            BotCommand("newgroup", "创建分组"),
+            BotCommand("mv", "移动消息到分组"),
             BotCommand("help", "查看命令列表"),
         ]
     )
