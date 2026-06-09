@@ -12,6 +12,8 @@ from app.models import Group
 logger = logging.getLogger(__name__)
 
 GROUP_SELECT_TIMEOUT = 60  # auto-save if no selection
+GROUP_ICONS = ["📁", "📂", "📦", "📋", "⭐", "❤️", "🔥", "💎"]
+DEFAULT_GROUP_ICON = "📁"
 
 
 # ---- Queries ----
@@ -41,20 +43,21 @@ def get_all_groups_tree() -> str:
     for g in groups:
         depth = g.path.count("/") - 1
         indent = "  " * depth
-        lines.append(f"{indent}📁 {g.name}")
+        icon = g.icon or DEFAULT_GROUP_ICON
+        lines.append(f"{indent}{icon} {g.name}")
     return "\n".join(lines)
 
 
 # ---- Mutations ----
 
-def create_group(name: str, parent_id: int | None = None) -> Group:
+def create_group(name: str, parent_id: int | None = None, icon: str = DEFAULT_GROUP_ICON) -> Group:
     with Session(engine) as session:
         if parent_id:
             parent = session.get(Group, parent_id)
             path = f"{parent.path}/{name}" if parent else f"/{name}"
         else:
             path = f"/{name}"
-        group = Group(name=name, parent_id=parent_id, path=path, created_at=datetime.utcnow())
+        group = Group(name=name, icon=icon, parent_id=parent_id, path=path, created_at=datetime.utcnow())
         session.add(group)
         session.commit()
         session.refresh(group)
@@ -96,7 +99,11 @@ def build_group_keyboard(
     # Breadcrumb header
     if parent_id:
         group = get_group(parent_id)
-        header = f"📁 {group.path.strip('/')} >" if group else "选择分组："
+        if group:
+            icon = group.icon or DEFAULT_GROUP_ICON
+            header = f"{icon} {group.path.strip('/')} >"
+        else:
+            header = "选择分组："
     else:
         header = "选择分组："
 
@@ -105,8 +112,9 @@ def build_group_keyboard(
     # Group buttons, 2 per row
     row: list[InlineKeyboardButton] = []
     for child in children:
+        child_icon = child.icon or DEFAULT_GROUP_ICON
         row.append(InlineKeyboardButton(
-            f"📁 {child.name}",
+            f"{child_icon} {child.name}",
             callback_data=f"g:{pending_id}:{child.id}",
         ))
         if len(row) == 2:

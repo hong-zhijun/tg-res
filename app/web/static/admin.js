@@ -438,6 +438,8 @@ async function loadGroups() {
   renderGroupTree(data.items || []);
 }
 
+const GROUP_ICONS = ["📁", "📂", "📦", "📋", "⭐", "❤️", "🔥", "💎"];
+
 function renderGroupTree(items) {
   if (!items.length) {
     els.groupTree.innerHTML = '<div class="empty">还没有分组。点击上方按钮创建第一个分组。</div>';
@@ -446,10 +448,11 @@ function renderGroupTree(items) {
   els.groupTree.innerHTML = items.map((g) => {
     const depth = g.path.split("/").filter(Boolean).length - 1;
     const indent = depth * 28;
+    const icon = g.icon || "📁";
     return `
       <div class="group-row" style="padding-left:${indent}px">
         <div class="group-info">
-          <span>📁</span>
+          <button class="icon-picker-trigger" title="更换图标" data-group-icon="${g.id}">${icon}</button>
           <strong>${escapeHtml(g.name)}</strong>
           <span class="pill">${g.message_count} 条</span>
           <span class="group-path">${escapeHtml(g.path)}</span>
@@ -472,6 +475,38 @@ function renderGroupTree(items) {
   document.querySelectorAll("[data-group-delete]").forEach((btn) => {
     btn.addEventListener("click", () => confirmDeleteGroup(Number(btn.dataset.groupDelete), btn.dataset.groupName));
   });
+  document.querySelectorAll("[data-group-icon]").forEach((btn) => {
+    btn.addEventListener("click", () => promptChangeIcon(Number(btn.dataset.groupIcon)));
+  });
+}
+
+function buildIconPicker(selectedIcon = "📁", inputId = "iconPicker") {
+  return `
+    <div class="field">
+      <label>选择图标</label>
+      <div class="icon-picker" id="${inputId}">
+        ${GROUP_ICONS.map((ic) => `<button type="button" class="icon-option${ic === selectedIcon ? " active" : ""}" data-icon="${ic}">${ic}</button>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function bindIconPicker(containerId = "iconPicker") {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.querySelectorAll(".icon-option").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      container.querySelectorAll(".icon-option").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+}
+
+function getSelectedIcon(containerId = "iconPicker") {
+  const container = document.getElementById(containerId);
+  if (!container) return "📁";
+  const active = container.querySelector(".icon-option.active");
+  return active ? active.dataset.icon : "📁";
 }
 
 function promptCreateGroup(parentId) {
@@ -479,17 +514,22 @@ function promptCreateGroup(parentId) {
   openModal({
     title: label,
     small: true,
-    body: `<div class="field"><label for="groupNameInput">分组名称</label><input id="groupNameInput" placeholder="例：旅行"></div>`,
+    body: `
+      <div class="field"><label for="groupNameInput">分组名称</label><input id="groupNameInput" placeholder="例：旅行"></div>
+      ${buildIconPicker("📁")}
+    `,
     foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmCreateGroup">创建</button>`,
   });
+  bindIconPicker();
   const input = document.getElementById("groupNameInput");
   input.focus();
   const confirm = document.getElementById("confirmCreateGroup");
   const doCreate = async () => {
     const name = input.value.trim();
     if (!name) return showToast("名称不能为空", "error");
+    const icon = getSelectedIcon();
     try {
-      await api("/api/groups", { method: "POST", body: JSON.stringify({ name, parent_id: parentId }) });
+      await api("/api/groups", { method: "POST", body: JSON.stringify({ name, parent_id: parentId, icon }) });
       closeModal();
       showToast("分组已创建", "success");
       await loadGroups();
@@ -521,6 +561,25 @@ function promptRenameGroup(id, oldName) {
   };
   document.getElementById("confirmRenameGroup").addEventListener("click", doRename);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") doRename(); });
+}
+
+function promptChangeIcon(id) {
+  openModal({
+    title: "更换图标",
+    small: true,
+    body: buildIconPicker("📁", "iconChangePicker"),
+    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmChangeIcon">保存</button>`,
+  });
+  bindIconPicker("iconChangePicker");
+  document.getElementById("confirmChangeIcon").addEventListener("click", async () => {
+    const icon = getSelectedIcon("iconChangePicker");
+    try {
+      await api(`/api/groups/${id}`, { method: "PATCH", body: JSON.stringify({ icon }) });
+      closeModal();
+      showToast("图标已更新", "success");
+      await loadGroups();
+    } catch (e) { handleApiError(e); }
+  });
 }
 
 function confirmDeleteGroup(id, name) {

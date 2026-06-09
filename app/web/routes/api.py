@@ -26,13 +26,18 @@ class NoteRequest(BaseModel):
     notes: str = ""
 
 
+GROUP_ICONS = ["📁", "📂", "📦", "📋", "⭐", "❤️", "🔥", "💎"]
+
+
 class GroupCreate(BaseModel):
     name: str
     parent_id: int | None = None
+    icon: str = "📁"
 
 
-class GroupRename(BaseModel):
-    name: str
+class GroupUpdate(BaseModel):
+    name: str | None = None
+    icon: str | None = None
 
 
 @router.post("/auth/login")
@@ -204,7 +209,8 @@ async def api_list_groups(db: Session = Depends(get_session)):
     return {
         "items": [
             {
-                "id": g.id, "name": g.name, "parent_id": g.parent_id,
+                "id": g.id, "name": g.name, "icon": g.icon or "📁",
+                "parent_id": g.parent_id,
                 "path": g.path, "message_count": counts.get(g.id, 0),
             }
             for g in groups
@@ -224,30 +230,39 @@ async def api_create_group(payload: GroupCreate, db: Session = Depends(get_sessi
     existing = db.exec(select(Group).where(Group.path == path)).first()
     if existing:
         raise HTTPException(status_code=409, detail="Group already exists at this path")
-    group = Group(name=payload.name, parent_id=payload.parent_id, path=path, created_at=datetime.utcnow())
+    icon = payload.icon if payload.icon in GROUP_ICONS else "📁"
+    group = Group(name=payload.name, icon=icon, parent_id=payload.parent_id, path=path, created_at=datetime.utcnow())
     db.add(group)
     db.commit()
     db.refresh(group)
-    return {"id": group.id, "name": group.name, "path": group.path}
+    return {"id": group.id, "name": group.name, "icon": group.icon, "path": group.path}
 
 
 @router.patch("/groups/{group_id}", dependencies=[Depends(require_api_auth)])
-async def api_rename_group(group_id: int, payload: GroupRename, db: Session = Depends(get_session)):
+async def api_update_group(group_id: int, payload: GroupUpdate, db: Session = Depends(get_session)):
     group = db.get(Group, group_id)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
-    old_path = group.path
-    if group.parent_id:
-        parent = db.get(Group, group.parent_id)
-        new_path = f"{parent.path}/{payload.name}" if parent else f"/{payload.name}"
-    else:
-        new_path = f"/{payload.name}"
-    group.name = payload.name
-    group.path = new_path
-    for d in db.exec(select(Group).where(Group.path.startswith(old_path + "/"))).all():
-        d.path = new_path + d.path[len(old_path):]
+    if payload.icon and payload.icon in GROUP_ICONS:
+        group.icon = payload.icon
+    if payload.name and payload.name != group.name:
+        old_path = group.path
+        if group.parent_id:
+            parent = db.get(Group, group.parent_id)
+            new_path = f"{parent.path}/{payload.name}" if parent else f"/{payload.name}"
+        else:
+            new_path = f"/{payload.name}"
+        group.name = payload.name
+        group.path = new_path
+        for d in db.exec(select(Group).where(Group.path.startswith(old_path + "/"))).all():
+            d.path = new_path + d.path[len(old_path):]
     db.commit()
     return {"ok": True}
+
+
+@router.get("/groups/icons", dependencies=[Depends(require_api_auth)])
+async def api_group_icons():
+    return {"icons": GROUP_ICONS}
 
 
 @router.delete("/groups/{group_id}", dependencies=[Depends(require_api_auth)])

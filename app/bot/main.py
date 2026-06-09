@@ -60,7 +60,7 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("newgroup", cmd_newgroup))
     app.add_handler(CommandHandler("mv", cmd_mv))
 
-    app.add_handler(CallbackQueryHandler(handle_group_callback, pattern=r"^g[sbn]?:"))
+    app.add_handler(CallbackQueryHandler(handle_group_callback, pattern=r"^g[sbni]?:"))
 
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VIDEO, handle_video))

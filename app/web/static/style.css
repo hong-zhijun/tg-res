@@ -1179,3 +1179,44 @@ tbody tr:hover {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.icon-picker-trigger {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    transition: border-color .15s, background .15s;
+}
+.icon-picker-trigger:hover {
+    border-color: var(--border-strong);
+    background: var(--bg);
+}
+.icon-picker {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.icon-option {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color .15s, transform .1s;
+}
+.icon-option:hover {
+    border-color: var(--muted);
+    transform: scale(1.1);
+}
+.icon-option.active {
+    border-color: var(--accent);
+    background: var(--bg);
+    box-shadow: 0 0 0 2px rgba(201, 100, 66, .2);
+}

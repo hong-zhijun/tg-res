@@ -95,7 +95,8 @@ async def cmd_newgroup(update, context) -> None:
         await update.message.reply_text("用法：/newgroup 分组路径\n例：/newgroup 旅行/日本/东京")
         return
     grp = get_or_create_by_path(path)
-    await update.message.reply_text(f"✅ 分组「{grp.path.strip('/')}」已创建")
+    icon = grp.icon or "📁"
+    await update.message.reply_text(f"✅ {icon} 分组「{grp.path.strip('/')}」已创建")
 
 
 @require_allowed

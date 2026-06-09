@@ -26,6 +26,7 @@ def init_db() -> None:
         for stmt in (
             "ALTER TABLE messages ADD COLUMN group_id INTEGER",
             "ALTER TABLE messages ADD COLUMN bundle_id TEXT",
+            "ALTER TABLE groups ADD COLUMN icon TEXT DEFAULT '📁'",
         ):
             try:
                 conn.execute(text(stmt))

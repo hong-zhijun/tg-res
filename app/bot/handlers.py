@@ -11,9 +11,11 @@ from typing import Any
 
 import httpx
 from sqlmodel import Session
-from telegram import InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.bot.groups import (
+    DEFAULT_GROUP_ICON,
+    GROUP_ICONS,
     GROUP_SELECT_TIMEOUT,
     build_group_keyboard,
     create_group,
@@ -297,6 +299,27 @@ async def handle_group_callback(update, context):
         await query.edit_message_text("请输入新分组名称：", reply_markup=InlineKeyboardMarkup([]))
         await query.answer()
 
+    elif data.startswith("gi:"):
+        # Icon selected for new group
+        parts = data.split(":", 3)
+        pending_id = parts[1]
+        parent_id = int(parts[2]) or None
+        icon = parts[3] if len(parts) > 3 else DEFAULT_GROUP_ICON
+        name = (context.user_data or {}).pop("pending_group_name", None)
+        if not name:
+            await query.answer("已过期")
+            return
+        grp = create_group(name, parent_id, icon=icon)
+        pending = _pending_saves.pop(pending_id, None)
+        if pending:
+            if pending.timeout_task:
+                pending.timeout_task.cancel()
+            await query.edit_message_text(f"{icon} 分组「{grp.path.strip('/')}」已创建", reply_markup=InlineKeyboardMarkup([]))
+            await _execute_save(pending, group_id=grp.id)
+        else:
+            await query.edit_message_text(f"{icon} 分组「{grp.path.strip('/')}」已创建（保存已超时）", reply_markup=InlineKeyboardMarkup([]))
+        await query.answer()
+
 
 # ---- User management ----
 
@@ -359,15 +382,17 @@ async def handle_text(update, context) -> None:
         del context.user_data["awaiting_group_name"]
         pending_id = awaiting["pending_id"]
         parent_id = awaiting["parent_id"]
-        grp = create_group(name, parent_id)
-        pending = _pending_saves.pop(pending_id, None)
-        if pending:
-            if pending.timeout_task:
-                pending.timeout_task.cancel()
-            await update.message.reply_text(f"📁 分组「{grp.path.strip('/')}」已创建")
-            await _execute_save(pending, group_id=grp.id)
-        else:
-            await update.message.reply_text(f"📁 分组「{grp.path.strip('/')}」已创建（保存已超时）")
+        # Show icon picker
+        icon_buttons = [
+            InlineKeyboardButton(ic, callback_data=f"gi:{pending_id}:{parent_id or 0}:{ic}")
+            for ic in GROUP_ICONS
+        ]
+        rows = [icon_buttons[i:i + 4] for i in range(0, len(icon_buttons), 4)]
+        context.user_data["pending_group_name"] = name
+        await update.message.reply_text(
+            f"分组「{name}」— 选择一个图标：",
+            reply_markup=InlineKeyboardMarkup(rows),
+        )
         return
 
     msg = update.message
