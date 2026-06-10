@@ -13,17 +13,24 @@ cp "${SSH_KEY_PATH}/id_ed25519" "${SSH_PRIVATE_KEY}"
 chmod 600 "${SSH_PRIVATE_KEY}"
 touch "${SSH_KEY_PATH}/known_hosts"
 
-CF_OPTS=""
 SSH_TARGET="${SSH_HOST}"
+SSH_CF_CONFIG="/tmp/ssh_cf_config"
+
 if [ -n "${CF_TUNNEL_HOST}" ]; then
     echo "[entrypoint] Using Cloudflare Tunnel via ${CF_TUNNEL_HOST}"
-    CF_OPTS="-o ProxyCommand=cloudflared access ssh --hostname ${CF_TUNNEL_HOST}"
     SSH_TARGET="${CF_TUNNEL_HOST}"
+    cat > "${SSH_CF_CONFIG}" <<SSHEOF
+Host ${CF_TUNNEL_HOST}
+    ProxyCommand cloudflared access ssh --hostname %h
+SSHEOF
+else
+    echo "[entrypoint] Using direct SSH to ${SSH_HOST}"
+    : > "${SSH_CF_CONFIG}"
 fi
 
 echo "[entrypoint] Starting SSH SOCKS tunnel..."
 autossh -M 0 -N -D 127.0.0.1:${SOCKS_PORT:-1080} \
-  ${CF_OPTS} \
+  -F "${SSH_CF_CONFIG}" \
   -o "ServerAliveInterval=30" \
   -o "ServerAliveCountMax=3" \
   -o "ExitOnForwardFailure=yes" \
