@@ -13,8 +13,17 @@ cp "${SSH_KEY_PATH}/id_ed25519" "${SSH_PRIVATE_KEY}"
 chmod 600 "${SSH_PRIVATE_KEY}"
 touch "${SSH_KEY_PATH}/known_hosts"
 
+CF_OPTS=""
+SSH_TARGET="${SSH_HOST}"
+if [ -n "${CF_TUNNEL_HOST}" ]; then
+    echo "[entrypoint] Using Cloudflare Tunnel via ${CF_TUNNEL_HOST}"
+    CF_OPTS="-o ProxyCommand=cloudflared access ssh --hostname ${CF_TUNNEL_HOST}"
+    SSH_TARGET="${CF_TUNNEL_HOST}"
+fi
+
 echo "[entrypoint] Starting SSH SOCKS tunnel..."
 autossh -M 0 -N -D 127.0.0.1:${SOCKS_PORT:-1080} \
+  ${CF_OPTS} \
   -o "ServerAliveInterval=30" \
   -o "ServerAliveCountMax=3" \
   -o "ExitOnForwardFailure=yes" \
@@ -22,7 +31,7 @@ autossh -M 0 -N -D 127.0.0.1:${SOCKS_PORT:-1080} \
   -o "UserKnownHostsFile=${SSH_KEY_PATH}/known_hosts" \
   -i "${SSH_PRIVATE_KEY}" \
   -p ${SSH_PORT:-22} \
-  ${SSH_USER}@${SSH_HOST} &
+  ${SSH_USER}@${SSH_TARGET} &
 TUNNEL_PID=$!
 
 echo "[entrypoint] Waiting for tunnel..."

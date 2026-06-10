@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ssh_host: str
     ssh_port: int = 22
     socks_port: int = 1080
+    cf_tunnel_host: str = ""
 
     save_path: str = "/app/saved"
     data_path: str = "/app/data"

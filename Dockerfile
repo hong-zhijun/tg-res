@@ -13,7 +13,19 @@ RUN apk add --no-cache \
         libstdc++ \
         openssl \
         zlib \
-        proxychains-ng
+        proxychains-ng \
+        wget
+
+RUN ARCH=$(uname -m) && \
+    case "$ARCH" in \
+        x86_64)  CF_ARCH="amd64" ;; \
+        aarch64) CF_ARCH="arm64" ;; \
+        armv7l)  CF_ARCH="arm"   ;; \
+        *)       echo "Unsupported arch: $ARCH" && exit 1 ;; \
+    esac && \
+    wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" \
+        -O /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
 
 COPY --from=tgapi /usr/local/bin/telegram-bot-api /usr/local/bin/telegram-bot-api
 
