@@ -263,9 +263,9 @@ async def handle_group_callback(update, context):
             await query.answer()
             await _execute_save(pending, group_id=gid)
         else:
+            await query.answer()
             header, keyboard = build_group_keyboard(pending_id, parent_id=gid)
             await query.edit_message_text(header, reply_markup=keyboard)
-            await query.answer()
 
     elif data.startswith("gs:"):
         # Save to group (or 0 = no group)
@@ -284,20 +284,20 @@ async def handle_group_callback(update, context):
         # Go back to parent
         _, pending_id, pid_str = data.split(":", 2)
         parent_id = int(pid_str) or None
+        await query.answer()
         header, keyboard = build_group_keyboard(pending_id, parent_id=parent_id)
         await query.edit_message_text(header, reply_markup=keyboard)
-        await query.answer()
 
     elif data.startswith("gn:"):
         # New sub-group: ask for name
         _, pending_id, pid_str = data.split(":", 2)
         parent_id = int(pid_str) or None
+        await query.answer()
         context.user_data["awaiting_group_name"] = {
             "pending_id": pending_id,
             "parent_id": parent_id,
         }
         await query.edit_message_text("请输入新分组名称：", reply_markup=InlineKeyboardMarkup([]))
-        await query.answer()
 
     elif data.startswith("gi:"):
         # Icon selected for new group
@@ -309,6 +309,7 @@ async def handle_group_callback(update, context):
         if not name:
             await query.answer("已过期")
             return
+        await query.answer()
         grp = create_group(name, parent_id, icon=icon)
         pending = _pending_saves.pop(pending_id, None)
         if pending:
@@ -318,7 +319,6 @@ async def handle_group_callback(update, context):
             await _execute_save(pending, group_id=grp.id)
         else:
             await query.edit_message_text(f"{icon} 分组「{grp.path.strip('/')}」已创建（保存已超时）", reply_markup=InlineKeyboardMarkup([]))
-        await query.answer()
 
 
 # ---- User management ----
