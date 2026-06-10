@@ -3,7 +3,6 @@ const state = {
   messagePage: 1,
   messageHasNext: false,
   users: [],
-  settings: {},
 };
 
 const routes = {
@@ -12,7 +11,6 @@ const routes = {
   users: ["用户白名单", "访问控制"],
   groups: ["分组管理", "资源分类"],
   logs: ["日志查看", "运行记录"],
-  settings: ["设置页", "系统配置"],
 };
 
 const typeNames = {
@@ -38,11 +36,11 @@ function bindElements() {
   [
     "sidebar", "scrim", "menuBtn", "nav", "pageTitle", "pageCrumb", "globalSearch",
     "logoutBtn", "refreshBtn", "metricToday", "metricWeek", "metricMonth", "metricStorage",
-    "heroSummary", "recentMessages", "typeDistribution", "messageSearch", "typeFilter",
+    "recentMessages", "typeDistribution", "messageSearch", "typeFilter",
     "dateFrom", "dateTo", "prevPageBtn", "nextPageBtn", "messageRows", "userSearch",
     "allowedFilter", "userRows", "logLevelFilter", "logSearch", "refreshLogsBtn",
     "addRootGroupBtn", "groupTree",
-    "logRows", "settingsList", "modalBackdrop", "modalBox", "modalTitle", "modalBody",
+    "logRows", "modalBackdrop", "modalBox", "modalTitle", "modalBody",
     "modalFoot", "modalClose", "toastStack",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
@@ -111,7 +109,7 @@ async function showRoute(route) {
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("active", view.id === state.route);
   });
-  document.querySelectorAll(".nav a").forEach((link) => {
+  document.querySelectorAll(".nav a, .mobile-topnav a").forEach((link) => {
     link.classList.toggle("active", link.dataset.route === state.route);
   });
   els.pageTitle.textContent = routes[state.route][0];
@@ -127,7 +125,6 @@ async function loadRoute(route, noisy) {
     if (route === "users") await loadUsers();
     if (route === "groups") await loadGroups();
     if (route === "logs") await loadLogs();
-    if (route === "settings") await loadSettings();
     if (noisy) showToast("已刷新", "success");
   } catch (error) {
     handleApiError(error);
@@ -169,7 +166,6 @@ async function loadDashboard() {
   els.metricWeek.textContent = data.stats.week;
   els.metricMonth.textContent = data.stats.month;
   els.metricStorage.textContent = formatBytes(data.stats.storage_bytes);
-  els.heroSummary.textContent = `累计归档 ${data.stats.total} 条，本月新增 ${data.stats.month} 条，媒体目录占用 ${formatBytes(data.stats.storage_bytes)}。`;
   renderRecentMessages(data.recent_messages || []);
   renderTypeDistribution(data.type_distribution || []);
 }
@@ -195,7 +191,7 @@ function renderTypeDistribution(items) {
         <strong>${escapeHtml(typeNames[item.type] || item.type)}</strong>
         <span>${item.count} 条记录</span>
       </div>
-      <time>${Math.round(item.count)}</time>
+      <span class="pill">${Math.round(item.count)} 条</span>
     </div>
   `).join("") || `<div class="empty">暂无类型数据</div>`;
 }
@@ -220,13 +216,15 @@ async function loadMessages() {
 function renderMessages(items) {
   els.messageRows.innerHTML = items.map((item) => `
     <tr>
+      <td class="id-cell">#${item.id}</td>
       <td>
-        <div class="title-cell">
-          <div class="avatar">${typeAvatar(item.type)}</div>
-          <div><strong>#${item.id}</strong><span>${escapeHtml(summaryText(item))}</span></div>
+        <div class="message-cell">
+          <strong>${escapeHtml(summaryText(item))}</strong>
+          <span>${escapeHtml(item.file_path || "无附件")}</span>
         </div>
       </td>
       <td><span class="pill">${escapeHtml(typeNames[item.type] || item.type)}</span></td>
+      <td>${renderGroupPill(item)}</td>
       <td>${item.user_id}</td>
       <td>${formatDate(item.created_at)}</td>
       <td>${item.file_size ? formatBytes(item.file_size) : "-"}</td>
@@ -237,7 +235,7 @@ function renderMessages(items) {
         </div>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="6"><div class="empty">没有匹配的消息</div></td></tr>`;
+  `).join("") || `<tr><td colspan="8"><div class="empty">没有匹配的消息</div></td></tr>`;
 
   document.querySelectorAll("[data-message-detail]").forEach((button) => {
     button.addEventListener("click", () => openMessageDetail(button.dataset.messageDetail));
@@ -259,6 +257,7 @@ async function openMessageDetail(id) {
           <div class="detail-item"><span>类型</span><strong>${escapeHtml(typeNames[msg.type] || msg.type)}</strong></div>
           <div class="detail-item"><span>用户</span><strong>${escapeHtml(userLabel(msg.user) || String(msg.user_id))}</strong></div>
           <div class="detail-item"><span>时间</span><strong>${formatDate(msg.created_at)}</strong></div>
+          <div class="detail-item"><span>分组</span><strong>${escapeHtml(groupLabel(msg))}</strong></div>
           <div class="detail-item"><span>文件</span><strong>${escapeHtml(msg.file_path || "-")}</strong></div>
           <div class="detail-item"><span>大小</span><strong>${msg.file_size ? formatBytes(msg.file_size) : "-"}</strong></div>
         </div>
@@ -450,16 +449,20 @@ function renderGroupTree(items) {
     const indent = depth * 28;
     const icon = g.icon || "📁";
     return `
-      <div class="group-row" style="padding-left:${indent}px">
+      <div class="group-row" style="--group-indent:${indent}px">
         <div class="group-info">
-          <button class="icon-picker-trigger" title="更换图标" data-group-icon="${g.id}">${icon}</button>
-          <strong>${escapeHtml(g.name)}</strong>
-          <span class="pill">${g.message_count} 条</span>
-          <span class="group-path">${escapeHtml(g.path)}</span>
+          <span class="group-icon" aria-hidden="true">${icon}</span>
+          <div class="group-text">
+            <div class="group-title-line">
+              <strong>${escapeHtml(g.name)}</strong>
+              <span class="pill group-count">${g.message_count} 条</span>
+            </div>
+            <span class="group-path">${escapeHtml(g.path)}</span>
+          </div>
         </div>
         <div class="row-actions">
           <button class="icon-btn icon-btn--success" title="新建子分组" data-group-add="${g.id}">+</button>
-          <button class="icon-btn" title="重命名" data-group-rename="${g.id}" data-group-name="${escapeAttr(g.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="icon-btn" title="编辑分组" data-group-edit="${g.id}" data-group-name="${escapeAttr(g.name)}" data-group-icon-value="${escapeAttr(icon)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button class="icon-btn icon-btn--danger" title="删除分组" data-group-delete="${g.id}" data-group-name="${escapeAttr(g.name)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2m1 0v14H7V6h10zM10 10v7m4-7v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
         </div>
       </div>
@@ -469,14 +472,11 @@ function renderGroupTree(items) {
   document.querySelectorAll("[data-group-add]").forEach((btn) => {
     btn.addEventListener("click", () => promptCreateGroup(Number(btn.dataset.groupAdd)));
   });
-  document.querySelectorAll("[data-group-rename]").forEach((btn) => {
-    btn.addEventListener("click", () => promptRenameGroup(Number(btn.dataset.groupRename), btn.dataset.groupName));
+  document.querySelectorAll("[data-group-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => promptEditGroup(Number(btn.dataset.groupEdit), btn.dataset.groupName, btn.dataset.groupIconValue));
   });
   document.querySelectorAll("[data-group-delete]").forEach((btn) => {
     btn.addEventListener("click", () => confirmDeleteGroup(Number(btn.dataset.groupDelete), btn.dataset.groupName));
-  });
-  document.querySelectorAll("[data-group-icon]").forEach((btn) => {
-    btn.addEventListener("click", () => promptChangeIcon(Number(btn.dataset.groupIcon)));
   });
 }
 
@@ -539,47 +539,33 @@ function promptCreateGroup(parentId) {
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") doCreate(); });
 }
 
-function promptRenameGroup(id, oldName) {
+function promptEditGroup(id, oldName, oldIcon = "📁") {
   openModal({
-    title: "重命名分组",
+    title: "编辑分组",
     small: true,
-    body: `<div class="field"><label for="renameInput">新名称</label><input id="renameInput" value="${escapeAttr(oldName)}"></div>`,
-    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmRenameGroup">保存</button>`,
+    body: `
+      <div class="field"><label for="renameInput">名称</label><input id="renameInput" value="${escapeAttr(oldName)}"></div>
+      ${buildIconPicker(oldIcon, "editIconPicker")}
+    `,
+    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmEditGroup">保存</button>`,
   });
+  bindIconPicker("editIconPicker");
   const input = document.getElementById("renameInput");
   input.focus();
   input.select();
-  const doRename = async () => {
+  const doEdit = async () => {
     const name = input.value.trim();
     if (!name) return showToast("名称不能为空", "error");
+    const icon = getSelectedIcon("editIconPicker");
     try {
-      await api(`/api/groups/${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+      await api(`/api/groups/${id}`, { method: "PATCH", body: JSON.stringify({ name, icon }) });
       closeModal();
-      showToast("已重命名", "success");
+      showToast("分组已保存", "success");
       await loadGroups();
     } catch (e) { handleApiError(e); }
   };
-  document.getElementById("confirmRenameGroup").addEventListener("click", doRename);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doRename(); });
-}
-
-function promptChangeIcon(id) {
-  openModal({
-    title: "更换图标",
-    small: true,
-    body: buildIconPicker("📁", "iconChangePicker"),
-    foot: `<button class="btn ghost" data-modal-close>取消</button><button class="btn primary" id="confirmChangeIcon">保存</button>`,
-  });
-  bindIconPicker("iconChangePicker");
-  document.getElementById("confirmChangeIcon").addEventListener("click", async () => {
-    const icon = getSelectedIcon("iconChangePicker");
-    try {
-      await api(`/api/groups/${id}`, { method: "PATCH", body: JSON.stringify({ icon }) });
-      closeModal();
-      showToast("图标已更新", "success");
-      await loadGroups();
-    } catch (e) { handleApiError(e); }
-  });
+  document.getElementById("confirmEditGroup").addEventListener("click", doEdit);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doEdit(); });
 }
 
 function confirmDeleteGroup(id, name) {
@@ -597,20 +583,6 @@ function confirmDeleteGroup(id, name) {
       await loadGroups();
     } catch (e) { handleApiError(e); }
   });
-}
-
-async function loadSettings() {
-  state.settings = await api("/api/settings");
-  renderSettings();
-}
-
-function renderSettings() {
-  els.settingsList.innerHTML = Object.entries(state.settings).map(([key, value]) => `
-    <div class="setting-row">
-      <div><strong>${escapeHtml(key)}</strong><span>${escapeHtml(String(value ?? ""))}</span></div>
-      ${key.includes("TOKEN") || key.includes("HASH") || key.includes("PASSWORD") ? '<span class="pill warn">脱敏</span>' : '<span class="pill">只读</span>'}
-    </div>
-  `).join("");
 }
 
 async function logout() {
@@ -662,8 +634,16 @@ function summaryText(item) {
   return item.text || item.file_path || "无文字内容";
 }
 
-function typeAvatar(type) {
-  return ({ text: "讯", photo: "图", video: "影", document: "文", voice: "声", audio: "音", animation: "动", sticker: "贴" }[type] || "档");
+function groupLabel(item) {
+  if (!item.group_id) return "-";
+  return item.group_path || item.group_name || `#${item.group_id}`;
+}
+
+function renderGroupPill(item) {
+  const label = groupLabel(item);
+  if (label === "-") return `<span class="muted">-</span>`;
+  const icon = item.group_icon || "";
+  return `<span class="pill group-pill">${escapeHtml(icon)} ${escapeHtml(label)}</span>`;
 }
 
 function userInitial(user) {

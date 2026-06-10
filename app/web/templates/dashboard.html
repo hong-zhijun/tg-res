@@ -1,13 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Archive Admin{% endblock %}
+{% block title %}消息后台{% endblock %}
 {% block body %}
 <div class="app-shell">
+    <div class="app-frame">
     <aside class="sidebar" id="sidebar">
-        <div class="brand">
-            <div class="brand-mark">A</div>
+        <div class="brand side-brand">
+            <div class="brand-mark brand-mark--small">
+                <svg viewBox="0 0 140 140" role="img" aria-label="系统 logo">
+                    <defs>
+                        <linearGradient id="logoGradient" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#10B160"/><stop offset="100%" stop-color="#059050"/></linearGradient>
+                        <filter id="logoShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#047a40" flood-opacity=".18"/></filter>
+                    </defs>
+                    <rect x="18" y="18" width="104" height="104" rx="28" fill="url(#logoGradient)" filter="url(#logoShadow)"/>
+                    <path d="M37 69 C37 67 38 65 40 64 L97 39 C100 38 103 41 102 44 L86 101 C85 104 81 105 79 103 L65 89 L54 96 C52 97 49 96 49 93 L49 92 L56 80 L81 54 C82 53 82 51 80 52 L52 68 C49 70 47 70 45 69 Z" fill="#fff"/>
+                    <path d="M54 80 L81 54" stroke="#07C160" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M49 92 L54 96 L53 88" fill="#fff"/>
+                </svg>
+            </div>
             <div>
-                <h1>Archive</h1>
-                <p>Admin Console</p>
+                <h1>消息后台</h1>
+                <p>系统入口</p>
             </div>
         </div>
 
@@ -32,24 +44,26 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M6 4h12v16H6V4Zm3 5h6m-6 4h6m-6 4h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 日志查看
             </a>
-            <a href="#settings" data-route="settings">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Zm0-12v2m0 13v2m8.5-8.5h-2m-13 0h-2m14.3-6.3-1.4 1.4m-8.8 8.8-1.4 1.4m0-11.6 1.4 1.4m8.8 8.8 1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                设置页
-            </a>
         </nav>
 
         <div class="sidebar-foot">
-            <strong>服务状态</strong>
-            <div class="health"><i class="dot"></i><span>Bot / API / Web 正常</span></div>
+            当前环境：生产
         </div>
     </aside>
     <div class="mobile-scrim" id="scrim"></div>
 
     <main class="main">
+        <nav class="mobile-topnav" aria-label="移动端导航">
+            <a href="#dashboard" data-route="dashboard">仪表盘</a>
+            <a href="#messages" data-route="messages">消息</a>
+            <a href="#users" data-route="users">白名单</a>
+            <a href="#groups" data-route="groups">分组</a>
+            <a href="#logs" data-route="logs">日志</a>
+        </nav>
         <header class="topbar">
             <div class="page-title">
                 <button class="icon-btn mobile-menu" id="menuBtn" aria-label="打开菜单">☰</button>
-                <h2 id="pageTitle">仪表盘</h2>
+                <h1 id="pageTitle">仪表盘</h1>
                 <span class="crumb" id="pageCrumb">今日概览</span>
             </div>
             <div class="top-actions">
@@ -57,49 +71,28 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="m21 21-4.2-4.2M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
                     <input id="globalSearch" placeholder="搜索消息、用户、日志">
                 </label>
-                <button class="btn ghost" id="logoutBtn">退出</button>
                 <button class="btn primary" id="refreshBtn">刷新</button>
+                <button class="btn ghost" id="logoutBtn">退出</button>
             </div>
         </header>
 
         <section class="content">
             <div id="dashboard" class="view">
                 <div class="grid" style="gap:22px">
-                    <section class="card hero-card">
-                        <div>
-                            <h3>剪藏后台运行中。</h3>
-                            <p id="heroSummary">正在读取 Telegram 剪藏统计、媒体保存状态和最近消息。</p>
-                            <div class="filters">
-                                <a class="btn primary" href="#messages">查看消息</a>
-                                <button class="btn" data-action="refresh">手动刷新</button>
-                            </div>
-                        </div>
-                        <div class="ink-illustration" aria-hidden="true">
-                            <svg viewBox="0 0 420 260" fill="none">
-                                <path d="M64 181c34-69 74-102 120-99 69 5 64 107 132 71 28-14 39-42 42-72" stroke="#141413" stroke-width="5" stroke-linecap="round"/>
-                                <path d="M84 62c44 14 74 12 107-8" stroke="#c96442" stroke-width="7" stroke-linecap="round"/>
-                                <path d="M76 196c48 21 100 27 156 18 46-7 83-25 111-52" stroke="#c96442" stroke-width="5" stroke-linecap="round"/>
-                                <circle cx="305" cy="88" r="30" fill="#e8e6dc" stroke="#141413" stroke-width="4"/>
-                                <path d="M294 91h24M306 79v24" stroke="#141413" stroke-width="4" stroke-linecap="round"/>
-                                <path d="M119 121h76M119 142h45" stroke="#5e5d59" stroke-width="4" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                    </section>
-
                     <section class="grid cols-4">
-                        <article class="card metric"><span class="label">今日消息</span><span class="value" id="metricToday">0</span><span class="delta good">今日新增</span></article>
-                        <article class="card metric"><span class="label">本周消息</span><span class="value" id="metricWeek">0</span><span class="delta">滚动统计</span></article>
-                        <article class="card metric"><span class="label">本月消息</span><span class="value" id="metricMonth">0</span><span class="delta">本月归档</span></article>
-                        <article class="card metric"><span class="label">存储占用</span><span class="value text-scale" id="metricStorage">0 B</span><span class="delta warn">媒体目录</span></article>
+                        <article class="card metric"><span class="label">今日消息</span><span class="value" id="metricToday">0</span><div class="stat-foot"><span>今日新增</span><span class="delta good">实时</span></div></article>
+                        <article class="card metric"><span class="label">本周消息</span><span class="value" id="metricWeek">0</span><div class="stat-foot"><span>滚动统计</span><span class="delta">7 天</span></div></article>
+                        <article class="card metric"><span class="label">本月消息</span><span class="value" id="metricMonth">0</span><div class="stat-foot"><span>本月归档</span><span class="delta">30 天</span></div></article>
+                        <article class="card metric"><span class="label">存储占用</span><span class="value text-scale" id="metricStorage">0 B</span><div class="stat-foot"><span>媒体目录</span><span class="delta warn">NAS</span></div></article>
                     </section>
 
                     <section class="grid cols-2">
                         <article class="card">
-                            <h3>最近消息</h3>
+                            <div class="section-head"><h2>最近消息</h2><a class="btn link" href="#messages">查看</a></div>
                             <div class="activity" id="recentMessages"></div>
                         </article>
-                        <article class="card dark">
-                            <h3>类型分布</h3>
+                        <article class="card">
+                            <div class="section-head"><h2>类型分布</h2></div>
                             <div class="activity" id="typeDistribution"></div>
                         </article>
                     </section>
@@ -129,9 +122,9 @@
                         <button class="btn" id="nextPageBtn">下一页</button>
                     </div>
                 </div>
-                <div class="table-wrap">
+                <div class="table-card table-wrap">
                     <table>
-                        <thead><tr><th>消息</th><th>类型</th><th>用户</th><th>时间</th><th>大小</th><th style="text-align:right">操作</th></tr></thead>
+                        <thead><tr><th>ID</th><th>消息</th><th>类型</th><th>分组</th><th>用户</th><th>时间</th><th>大小</th><th style="text-align:right">操作</th></tr></thead>
                         <tbody id="messageRows"></tbody>
                     </table>
                 </div>
@@ -148,7 +141,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="table-wrap">
+                <div class="table-card table-wrap">
                     <table>
                         <thead><tr><th>用户</th><th>权限</th><th>消息数</th><th>最后活跃</th><th>备注</th><th style="text-align:right">操作</th></tr></thead>
                         <tbody id="userRows"></tbody>
@@ -162,7 +155,7 @@
                         <button class="btn primary" id="addRootGroupBtn">+ 新建根分组</button>
                     </div>
                 </div>
-                <div class="card">
+                <div class="table-card">
                     <div class="group-tree" id="groupTree"></div>
                 </div>
             </div>
@@ -180,29 +173,13 @@
                     </div>
                     <button class="btn" id="refreshLogsBtn">刷新日志</button>
                 </div>
-                <div class="card log-card">
+                <div class="table-card log-card">
                     <div id="logRows"></div>
-                </div>
-            </div>
-
-            <div id="settings" class="view">
-                <div class="grid cols-2">
-                    <section class="card">
-                        <h3>当前配置</h3>
-                        <div class="settings-list" id="settingsList"></div>
-                    </section>
-                    <section class="card">
-                        <h3>运行说明</h3>
-                        <div class="settings-list">
-                            <div class="setting-row"><div><strong>自动下载媒体</strong><span>Bot 接收媒体后保存到 NAS 挂载目录</span></div><span class="pill success">启用</span></div>
-                            <div class="setting-row"><div><strong>仅白名单可用</strong><span>未知用户首次拒绝，后续静默</span></div><span class="pill success">启用</span></div>
-                            <div class="setting-row"><div><strong>Web 暴露方式</strong><span>设计为家庭局域网访问</span></div><span class="pill">内网</span></div>
-                        </div>
-                    </section>
                 </div>
             </div>
         </section>
     </main>
+    </div>
 </div>
 
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">

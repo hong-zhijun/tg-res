@@ -116,8 +116,9 @@ async def api_list_messages(
     items = db.exec(query.offset((page - 1) * page_size).limit(page_size + 1)).all()
     has_next = len(items) > page_size
     items = items[:page_size]
+    groups = _groups_for_messages(db, items)
     return {
-        "items": [_message_summary(item) for item in items],
+        "items": [_message_summary(item, groups.get(item.group_id)) for item in items],
         "page": page,
         "page_size": page_size,
         "has_next": has_next,
@@ -130,7 +131,8 @@ async def api_message_detail(message_id: int, db: Session = Depends(get_session)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
     user = db.get(User, msg.user_id)
-    data = _message_detail(msg)
+    group = db.get(Group, msg.group_id) if msg.group_id else None
+    data = _message_detail(msg, group)
     data["user"] = _user_dict(user) if user else None
     return data
 
@@ -336,7 +338,7 @@ def _count_since(db: Session, dt: datetime) -> int:
     return db.exec(select(func.count()).select_from(Message).where(Message.created_at >= dt)).one()
 
 
-def _message_summary(msg: Message) -> dict:
+def _message_summary(msg: Message, group: Group | None = None) -> dict:
     return jsonable_encoder(
         {
             "id": msg.id,
@@ -348,14 +350,18 @@ def _message_summary(msg: Message) -> dict:
             "file_path": msg.file_path,
             "file_size": msg.file_size,
             "mime_type": msg.mime_type,
+            "group_id": msg.group_id,
+            "group_name": group.name if group else None,
+            "group_icon": group.icon if group else None,
+            "group_path": group.path if group else None,
             "created_at": msg.created_at,
             "media_url": f"/media/{msg.file_path}" if msg.file_path else None,
         }
     )
 
 
-def _message_detail(msg: Message) -> dict:
-    data = _message_summary(msg)
+def _message_detail(msg: Message, group: Group | None = None) -> dict:
+    data = _message_summary(msg, group)
     data.update(
         jsonable_encoder(
             {
@@ -368,6 +374,14 @@ def _message_detail(msg: Message) -> dict:
         )
     )
     return data
+
+
+def _groups_for_messages(db: Session, messages: list[Message]) -> dict[int, Group]:
+    group_ids = {msg.group_id for msg in messages if msg.group_id}
+    if not group_ids:
+        return {}
+    groups = db.exec(select(Group).where(Group.id.in_(group_ids))).all()
+    return {group.id: group for group in groups if group.id is not None}
 
 
 def _user_dict(user: User) -> dict:
