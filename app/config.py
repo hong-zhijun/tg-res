@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     ssh_port: int = 22
     socks_port: int = 1080
     cf_tunnel_host: str = ""
+    cf_access_client_id: str = ""
+    cf_access_client_secret: str = ""
 
     save_path: str = "/app/saved"
     data_path: str = "/app/data"

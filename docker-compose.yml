@@ -17,3 +17,5 @@ services:
       - SSH_KEY_PATH=/app/data/ssh
       - TGAPI_DIR=/var/lib/telegram-bot-api
       - CF_TUNNEL_HOST=${CF_TUNNEL_HOST:-}
+      - CF_ACCESS_CLIENT_ID=${CF_ACCESS_CLIENT_ID:-}
+      - CF_ACCESS_CLIENT_SECRET=${CF_ACCESS_CLIENT_SECRET:-}
