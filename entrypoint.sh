@@ -21,11 +21,12 @@ if [ -n "${CF_TUNNEL_HOST}" ]; then
     SSH_TARGET="${CF_TUNNEL_HOST}"
 
     CF_PROXY_SCRIPT="/tmp/cf-ssh-proxy.sh"
-    cat > "${CF_PROXY_SCRIPT}" <<'PROXYEOF'
+    cat > "${CF_PROXY_SCRIPT}" <<PROXYEOF
 #!/bin/sh
-exec cloudflared access ssh --hostname "$1" --id "$CF_ACCESS_CLIENT_ID" --secret "$CF_ACCESS_CLIENT_SECRET"
+exec cloudflared access ssh --hostname "\$1" --id "${CF_ACCESS_CLIENT_ID}" --secret "${CF_ACCESS_CLIENT_SECRET}"
 PROXYEOF
     chmod +x "${CF_PROXY_SCRIPT}"
+    echo "[entrypoint] Proxy script: $(cat ${CF_PROXY_SCRIPT})"
 
     cat > "${SSH_CF_CONFIG}" <<SSHEOF
 Host ${CF_TUNNEL_HOST}
