@@ -19,14 +19,10 @@ SSH_CF_CONFIG="/tmp/ssh_cf_config"
 if [ -n "${CF_TUNNEL_HOST}" ]; then
     echo "[entrypoint] Using Cloudflare Tunnel via ${CF_TUNNEL_HOST}"
     SSH_TARGET="${CF_TUNNEL_HOST}"
-    CF_TOKEN_OPTS=""
-    if [ -n "${CF_ACCESS_CLIENT_ID}" ] && [ -n "${CF_ACCESS_CLIENT_SECRET}" ]; then
-        CF_TOKEN_OPTS="--id ${CF_ACCESS_CLIENT_ID} --secret ${CF_ACCESS_CLIENT_SECRET}"
-        echo "[entrypoint] Using CF Service Token for authentication"
-    fi
+    export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
     cat > "${SSH_CF_CONFIG}" <<SSHEOF
 Host ${CF_TUNNEL_HOST}
-    ProxyCommand cloudflared access ssh --hostname %h ${CF_TOKEN_OPTS}
+    ProxyCommand cloudflared access ssh --hostname %h
 SSHEOF
 else
     echo "[entrypoint] Using direct SSH to ${SSH_HOST}"
