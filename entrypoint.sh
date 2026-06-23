@@ -19,10 +19,17 @@ SSH_CF_CONFIG="/tmp/ssh_cf_config"
 if [ -n "${CF_TUNNEL_HOST}" ]; then
     echo "[entrypoint] Using Cloudflare Tunnel via ${CF_TUNNEL_HOST}"
     SSH_TARGET="${CF_TUNNEL_HOST}"
-    export CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET
+
+    CF_PROXY_SCRIPT="/tmp/cf-ssh-proxy.sh"
+    cat > "${CF_PROXY_SCRIPT}" <<'PROXYEOF'
+#!/bin/sh
+exec cloudflared access ssh --hostname "$1" --id "$CF_ACCESS_CLIENT_ID" --secret "$CF_ACCESS_CLIENT_SECRET"
+PROXYEOF
+    chmod +x "${CF_PROXY_SCRIPT}"
+
     cat > "${SSH_CF_CONFIG}" <<SSHEOF
 Host ${CF_TUNNEL_HOST}
-    ProxyCommand cloudflared access ssh --hostname %h
+    ProxyCommand ${CF_PROXY_SCRIPT} %h
 SSHEOF
 else
     echo "[entrypoint] Using direct SSH to ${SSH_HOST}"
